@@ -1,0 +1,1276 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Conditions:
+  HasDestinationCreds: !Not
+    - !Equals
+      - !Ref 'DestinationBucketAccessKeyID'
+      - ''
+  HasPassphrase: !Not
+    - !Equals
+      - !Ref 'VolumeKeyPassphrase'
+      - ''
+  HasSourceCreds: !Not
+    - !Equals
+      - !Ref 'SourceBucketAccessKeyID'
+      - ''
+Description: CloudFormation template to create all required resources to run the Nasuni
+  Analytics Connector with source volume in S3 and destination in S3.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Licensing
+        Parameters:
+          - ProductKey
+      - Label:
+          default: Source Information
+        Parameters:
+          - SourceBucket
+          - SourceBucketAccessKeyID
+          - SourceBucketSecretAccessKey
+          - VolumeKeyParameter
+          - VolumeKeyPassphrase
+          - UniFSTOCHandle
+          - PrevUniFSTOCHandle
+          - StartingPoint
+      - Label:
+          default: Filter Information
+        Parameters:
+          - IncludeFilterPattern
+          - IncludeFilterType
+          - ExcludeFilterPattern
+          - ExcludeFilterType
+          - MinFileSizeFilter
+          - MaxFileSizeFilter
+      - Label:
+          default: Destination Information
+        Parameters:
+          - DestinationBucket
+          - DestinationBucketAccessKeyID
+          - DestinationBucketSecretAccessKey
+          - DestinationPrefix
+      - Label:
+          default: Advanced Settings
+        Parameters:
+          - MaxInvocations
+          - ExcludeTempFiles
+    ParameterLabels:
+      DestinationBucket:
+        default: Destination S3 Bucket Name
+      DestinationBucketAccessKeyID:
+        default: Destination S3 Bucket Access Key ID
+      DestinationBucketSecretAccessKey:
+        default: Destination S3 Bucket Secret Access Key
+      DestinationPrefix:
+        default: Destination Path
+      ExcludeFilterPattern:
+        default: Exclude Filter Pattern
+      ExcludeFilterType:
+        default: Exclude Filter Type
+      ExcludeTempFiles:
+        default: Exclude Temporary Files
+      IncludeFilterPattern:
+        default: Include Filter Pattern
+      IncludeFilterType:
+        default: Include Filter Type
+      MaxFileSizeFilter:
+        default: Max File Size Filter
+      MaxInvocations:
+        default: Maximum Lambda Invocations
+      MinFileSizeFilter:
+        default: Min File Size Filter
+      PrevUniFSTOCHandle:
+        default: Previous Snapshot Handle
+      ProductKey:
+        default: Nasuni Analytics Connector License Key
+      SourceBucket:
+        default: Source S3 Bucket Name
+      SourceBucketAccessKeyID:
+        default: Source S3 Bucket Access Key ID
+      SourceBucketSecretAccessKey:
+        default: Source S3 Bucket Secret Access Key
+      StartingPoint:
+        default: Source Path
+      UniFSTOCHandle:
+        default: Snapshot to Export
+      VolumeKeyParameter:
+        default: Nasuni Volume Encryption Key Parameter Name
+      VolumeKeyPassphrase:
+        default: Nasuni Volume Encryption Key Passphrase
+Outputs:
+  DashboardURL:
+    Description: Follow this link to monitor progress of the UniFS Export process
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AWS::StackName}-Dashboard'
+  UniFXLogGroup:
+    Value: !Join
+      - ''
+      - - /aws/lambda/
+        - !Ref 'UniFXLambda'
+  UniqueId:
+    Value: !Ref 'UniFXLambda'
+Parameters:
+  DestinationBucket:
+    AllowedPattern: (?=^.{3,63}$)(?!^(\d+\.)+\d+$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)
+    ConstraintDescription: >-
+      The bucket name can be between 3 and 63 characters long, and can contain only
+      lower-case characters, numbers, periods, and dashes. Each label in the bucket
+      name must start with a lowercase letter or number.
+    Description: The S3 bucket that will receive the files from the source Nasuni
+      Volume. Must already exist.
+    Type: String
+  DestinationBucketAccessKeyID:
+    AllowedPattern: (^$|(?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9]))
+    ConstraintDescription: The access key ID provided is not valid.
+    Default: ''
+    Description: Access access key ID with write privileges to the destination bucket.
+      Leave blank to use your account's credentials.
+    Type: String
+  DestinationBucketSecretAccessKey:
+    AllowedPattern: (^$|(?<![A-Za-z0-9/+=])[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=]))
+    ConstraintDescription: The secret access key provided is not valid.
+    Default: ''
+    Description: Secret access key with write privileges to the destination bucket.
+      Leave blank to use your account's credentials.
+    NoEcho: true
+    Type: String
+  DestinationPrefix:
+    AllowedPattern: ^/.*
+    ConstraintDescription: Destination Path must start with a "/"
+    Default: /
+    Description: The path to prepend to the exported object path. To mirror the source
+      full path, this value should be equal to the "Source Path" configured above.
+    Type: String
+  ExcludeFilterPattern:
+    Default: ''
+    Description: A glob or regex pattern to filter and exclude the contents from source
+      Nasuni Volume. Leave it blank to only use an include filter.
+    Type: String
+  ExcludeFilterType:
+    AllowedValues:
+      - glob
+      - glob_list
+      - regex
+    Default: glob
+    Description: Use glob, a comma-separated list of globs, or regex as exclude filter
+      type.
+    Type: String
+  ExcludeTempFiles:
+    AllowedValues:
+      - 'True'
+      - 'False'
+    Default: 'True'
+    Description: Exclude temporary files and directories from the export that are
+      commonly created by mounted operating systems. Additive to any given filters.
+    Type: String
+  IncludeFilterPattern:
+    AllowedPattern: (.|\s)*\S(.|\s)*
+    ConstraintDescription: Include Filter Pattern cannot be blank. Use "*" with "glob"
+      type to match all source files.
+    Default: '*'
+    Description: A glob or regex pattern to filter and include the contents of the
+      source Nasuni Volume.
+    Type: String
+  IncludeFilterType:
+    AllowedValues:
+      - glob
+      - glob_list
+      - regex
+    Default: glob
+    Description: Use glob, a comma-separated list of globs, or regex as include filter
+      type.
+    Type: String
+  MaxFileSizeFilter:
+    AllowedPattern: (?i)^\s*[0-9]+(\.[0-9]+)?\s*([kmg]?b)?\s*$
+    ConstraintDescription: Use number + optional unit (b, kb, mb or gb). E.g., 10mb
+    Default: 500gb
+    Description: The maximum file size to export (between 0b and 500gb). Use number
+      and optional unit symbol b, kb, mb or gb in decimal (i.e., 1kb = 1000b).
+    Type: String
+  MaxInvocations:
+    Default: '900'
+    Description: Number of lambda invocations to dedicate to the the Nasuni Analytics
+      Connector.  (Between 10 and 1000)
+    MaxValue: 1000
+    MinValue: 10
+    Type: Number
+  MinFileSizeFilter:
+    AllowedPattern: (?i)^\s*[0-9]+(\.[0-9]+)?\s*([kmg]?b)?\s*$
+    ConstraintDescription: Use number + optional unit (b, kb, mb or gb). E.g., 10mb
+    Default: '0b'
+    Description: The minimum file size to export (between 0b and 500gb). Use number
+      and optional unit symbol b, kb, mb or gb in decimal (i.e., 1kb = 1000b).
+    Type: String
+  PrevUniFSTOCHandle:
+    AllowedPattern: '|[A-Za-z0-9./-]+'
+    ConstraintDescription: The previous snapshot handle provided is not valid.
+    Default: ''
+    Description: Optional previous snapshot handle of the source volume. If provided,
+      use as the baseline for the Nasuni Analytics Connector delta export.
+    Type: String
+  ProductKey:
+    AllowedPattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+    ConstraintDescription: Product key provided is not valid.
+    Description: Nasuni Analytics Connector license key available at https://account.nasuni.com/account/cloudservices/
+    Type: String
+  SourceBucket:
+    AllowedPattern: (?=^.{3,63}$)(?!^(\d+\.)+\d+$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)
+    ConstraintDescription: >-
+      The bucket name can be between 3 and 63 characters long, and can contain only
+      lower-case characters, numbers, periods, and dashes. Each label in the bucket
+      name must start with a lowercase letter or number.
+    Description: The S3 bucket that contains the Nasuni Volume from which the Nasuni
+      Analytics Connector will ingest data.
+    Type: String
+  SourceBucketAccessKeyID:
+    AllowedPattern: (^$|(?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9]))
+    ConstraintDescription: The access key ID provided is not valid.
+    Default: ''
+    Description: Access key ID with read privileges to the source bucket. Leave blank
+      to use your account's credentials.
+    Type: String
+  SourceBucketSecretAccessKey:
+    AllowedPattern: (^$|(?<![A-Za-z0-9/+=])[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=]))
+    ConstraintDescription: The secret access key provided is not valid.
+    Default: ''
+    Description: Secret access key with read privileges to the source bucket. Leave
+      blank to use your account's credentials.
+    NoEcho: true
+    Type: String
+  StartingPoint:
+    AllowedPattern: ^/.*
+    ConstraintDescription: Source Path must start with a "/"
+    Default: /
+    Description: The starting directory within the source Nasuni Volume from which
+      the Nasuni Analytics Connector will ingest data.
+    Type: String
+  UniFSTOCHandle:
+    AllowedPattern: '[A-Za-z0-9./-]+'
+    ConstraintDescription: The snapshot handle provided is not valid.
+    Description: The handle representing the start of the snapshot of the source volume
+      from which the Nasuni Analytics Connector will ingest data.
+    Type: String
+  VolumeKeyParameter:
+    AllowedPattern: ^/.*
+    ConstraintDescription: Parameter Name must start with a "/"
+    Description: The name of the Parameter in AWS Parameter Store that contains the
+      Nasuni Volume Encryption Key for the source Nasuni Volume.
+    Type: String
+  VolumeKeyPassphrase:
+    Default: ''
+    Description: The passphrase (if configured) for the Volume Encryption Key
+    NoEcho: true
+    Type: String
+Resources:
+  BytesExported:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.exported_file"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - BytesExported
+          MetricNamespace: UniFX
+          MetricValue: $.size
+    Type: AWS::Logs::MetricFilter
+  BytesExportedTimestamp:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.exported_file"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - BytesExportedTimestamp
+          MetricNamespace: UniFX
+          MetricValue: $.created
+    Type: AWS::Logs::MetricFilter
+  BytesFound:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.file_work_added"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - BytesFound
+          MetricNamespace: UniFX
+          MetricValue: $.size
+    Type: AWS::Logs::MetricFilter
+  BytesFoundBelowMPU:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.file_work_added"
+        && $.size <= 200000000 }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - BytesFoundBelowMPU
+          MetricNamespace: UniFX
+          MetricValue: $.size
+    Type: AWS::Logs::MetricFilter
+  BytesFoundTimestamp:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.file_work_added"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - BytesFoundTimestamp
+          MetricNamespace: UniFX
+          MetricValue: $.created
+    Type: AWS::Logs::MetricFilter
+  BytesPut:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.file_bytes_put"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - BytesPut
+          MetricNamespace: UniFX
+          MetricValue: $.bytes_put
+    Type: AWS::Logs::MetricFilter
+  BytesPutTimestamp:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.file_bytes_put"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - BytesPutTimestamp
+          MetricNamespace: UniFX
+          MetricValue: $.created
+    Type: AWS::Logs::MetricFilter
+  Dashboard:
+    Properties:
+      DashboardBody: !Sub '{"widgets": [{"type": "text", "x": 0, "y": 0, "width":
+        6, "height": 9, "properties": {"markdown": "\n# Nasuni Analytics Connector\n\n&nbsp;\n\nInput
+        | Value\n---- | ----\n**Source Type** | *AWS* \n**Source Bucket** | *${SourceBucket}*\n**Snapshot
+        Handle** | *${UniFSTOCHandle}*\n**Previous Snapshot Handle** | *${PrevUniFSTOCHandle}*\n**Source
+        Path**  |*${StartingPoint}*\n**Include Filter Type** | *${IncludeFilterType}*\n**Include
+        Filter Pattern** | \n**Exclude Filter Type** | *${ExcludeFilterType}*\n**Exclude
+        Filter Pattern** | \n**Min File Size Filter** | *${MinFileSizeFilter}*\n**Max
+        File Size Filter** | *${MaxFileSizeFilter}*\n**Exclude Temporary Files** |
+        *${ExcludeTempFiles}*\n**Destination Type** | *AWS* \n**Destination Bucket**
+        | *${DestinationBucket}*\n**Destination Path** | *${DestinationPrefix}*\n\n&nbsp;\n\n"}},
+        {"type": "log", "x": 0, "y": 15, "width": 24, "height": 9, "properties": {"query":
+        "SOURCE ''/aws/lambda/${UniFXLambda}'' | fields message as Error| filter levelname
+        like /ERROR/\n| sort @timestamp desc", "region": "${AWS::Region}", "title":
+        "Errors", "view": "table"}}, {"type": "metric", "x": 0, "y": 9, "width": 6,
+        "height": 6, "properties": {"metrics": [[{"expression": "(end_time-start_time)/60",
+        "label": "Elapsed Time (min)", "id": "elapsed_time"}], [{"expression": "bytes_exported/(end_time-start_time)",
+        "label": "Avg Throughput (bytes/sec)", "id": "avg_throughput"}], ["UniFX",
+        "${UniFXLambda}-BytesFoundTimestamp", {"period": 2592000, "stat": "Minimum",
+        "id": "start_time", "visible": false}], [".", "${UniFXLambda}-BytesPutTimestamp",
+        {"period": 2592000, "stat": "Maximum", "id": "end_time", "visible": false}],
+        [".", "${UniFXLambda}-BytesPut", {"period": 2592000, "stat": "Sum", "id":
+        "bytes_exported", "visible": false}]], "view": "singleValue", "region": "${AWS::Region}",
+        "title": "Elapsed Time", "period": 2592000}}, {"type": "metric", "x": 6, "y":
+        0, "width": 18, "height": 3, "properties": {"metrics": [[{"expression": "(m1+m7)/m2*100",
+        "label": "Percent Complete", "id": "e1"}], ["UniFX", "${UniFXLambda}-BytesFound",
+        {"period": 2592000, "stat": "Sum", "label": "Source Bytes", "id": "m2"}],
+        [".", "${UniFXLambda}-BytesPut", {"period": 2592000, "stat": "Sum", "label":
+        "Bytes In Flight", "id": "m8"}], [".", "${UniFXLambda}-BytesExported", {"period":
+        2592000, "stat": "Sum", "label": "Exported Bytes", "id": "m1"}], [".", "${UniFXLambda}-FilesFound",
+        {"period": 2592000, "stat": "Sum", "label": "Source Files", "yAxis": "right",
+        "id": "m3"}], [".", "${UniFXLambda}-FilesExported", {"period": 2592000, "stat":
+        "Sum", "label": "Exported Files", "yAxis": "right", "id": "m4"}], [".", "${UniFXLambda}-DirsFound",
+        {"period": 2592000, "stat": "Sum", "label": "Directory Count", "id": "m5"}],
+        [".", "${UniFXLambda}-FailedFiles", {"period": 2592000, "stat": "Sum", "label":
+        "Failed Files", "id": "m6"}], [".", "${UniFXLambda}-FailedBytes", {"period":
+        2592000, "stat": "Sum", "label": "Total Bytes Failed", "id": "m7"}]], "view":
+        "singleValue", "region": "${AWS::Region}", "title": "Export Details", "period":
+        300}}, {"type": "metric", "x": 6, "y": 3, "width": 9, "height": 6, "properties":
+        {"metrics": [[{"expression": "m1/60", "label": "Export Throughput", "id":
+        "e1"}], [{"expression": "m2/60", "label": "Walk Throughput", "id": "e2", "yAxis":
+        "right"}], ["UniFX", "${UniFXLambda}-BytesPut", {"stat": "Sum", "period":
+        60, "id": "m1", "visible": false}], [".", "${UniFXLambda}-BytesFound", {"stat":
+        "Sum", "period": 60, "id": "m2", "visible": false}]], "view": "timeSeries",
+        "region": "${AWS::Region}", "title": "Export Throughput", "period": 60, "stacked":
+        false}}, {"type": "metric", "x": 15, "y": 3, "width": 9, "height": 6, "properties":
+        {"metrics": [["AWS/Lambda", "Invocations", "FunctionName", "${UniFXLambda}",
+        "Resource", "${UniFXLambda}", {"stat": "Sum", "period": 1}]], "view": "timeSeries",
+        "stacked": true, "region": "${AWS::Region}", "title": "Lambda Invocations"}},
+        {"type": "metric", "x": 6, "y": 9, "width": 9, "height": 3, "properties":
+        {"metrics": [["AWS/Lambda", "Errors", "FunctionName", "${UniFXLambda}", "Resource",
+        "${UniFXLambda}", {"stat": "Sum", "period": 1}]], "view": "timeSeries", "stacked":
+        true, "region": "${AWS::Region}", "title": "Lambda Errors"}}, {"type": "metric",
+        "x": 15, "y": 9, "width": 9, "height": 3, "properties": {"metrics": [["AWS/Lambda",
+        "Throttles", "FunctionName", "${UniFXLambda}", "Resource", "${UniFXLambda}",
+        {"stat": "Sum", "period": 1}]], "view": "timeSeries", "stacked": true, "region":
+        "${AWS::Region}", "title": "Lambda Throttles", "period": 1}}, {"type": "metric",
+        "x": 6, "y": 12, "width": 9, "height": 3, "properties": {"metrics": [["AWS/SQS",
+        "NumberOfMessagesSent", "QueueName", "${UniFXQueue.QueueName}", {"stat": "Sum",
+        "period": 300}], [".", "NumberOfMessagesReceived", ".", ".", {"stat": "Sum"}],
+        [".", "NumberOfEmptyReceives", ".", ".", {"stat": "Sum"}], [".", "NumberOfMessagesDeleted",
+        ".", ".", {"stat": "Sum"}], [".", "SentMessageSize", ".", ".", {"yAxis": "right",
+        "stat": "Maximum"}]], "view": "timeSeries", "stacked": false, "region": "${AWS::Region}",
+        "title": "Work Queue"}}, {"type": "metric", "x": 15, "y": 12, "width": 9,
+        "height": 3, "properties": {"metrics": [["AWS/Lambda", "ConcurrentExecutions",
+        "FunctionName", "${UniFXLambda}"]], "view": "timeSeries", "stacked": false,
+        "region": "${AWS::Region}", "title": "Concurrent Lambda Executions", "stat":
+        "Average", "period": 60}}]}'
+      DashboardName: !Sub '${AWS::StackName}-Dashboard'
+    Type: AWS::CloudWatch::Dashboard
+  DirDepth:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.exported_file"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - DirDepth
+          MetricNamespace: UniFX
+          MetricValue: $.dir_depth
+    Type: AWS::Logs::MetricFilter
+  DirSize:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.dir_size"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - DirSize
+          MetricNamespace: UniFX
+          MetricValue: $.data_chunk_count
+    Type: AWS::Logs::MetricFilter
+  DirsFound:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.found_dir"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - DirsFound
+          MetricNamespace: UniFX
+          MetricValue: '1'
+    Type: AWS::Logs::MetricFilter
+  ErrorCount:
+    Properties:
+      FilterPattern: '{ $.levelname = "ERROR" }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - ErrorCount
+          MetricNamespace: UniFX
+          MetricValue: '1'
+    Type: AWS::Logs::MetricFilter
+  FailedBytes:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.error_file"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - DefaultValue: 0.0
+          MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - FailedBytes
+          MetricNamespace: UniFX
+          MetricValue: $.size
+    Type: AWS::Logs::MetricFilter
+  FailedFiles:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.error_file"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - DefaultValue: 0.0
+          MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - FailedFiles
+          MetricNamespace: UniFX
+          MetricValue: '1'
+    Type: AWS::Logs::MetricFilter
+  FilesExported:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.exported_file"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - FilesExported
+          MetricNamespace: UniFX
+          MetricValue: '1'
+    Type: AWS::Logs::MetricFilter
+  FilesFound:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.file_work_added"
+        }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - FilesFound
+          MetricNamespace: UniFX
+          MetricValue: '1'
+    Type: AWS::Logs::MetricFilter
+  FilesFoundBelowMPU:
+    Properties:
+      FilterPattern: '{ $.levelname = "METRIC" && $.metric_name = "unifx.file_work_added"
+        && $.size <= 200000000 }'
+      LogGroupName: !Ref 'UniFXLogs'
+      MetricTransformations:
+        - MetricName: !Join
+            - ''
+            - - !Ref 'UniFXLambda'
+              - '-'
+              - FilesFoundBelowMPU
+          MetricNamespace: UniFX
+          MetricValue: '1'
+    Type: AWS::Logs::MetricFilter
+  PermissionForAlarmLambda:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref 'UniFXLambda'
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt 'UniFXAlarmRule.Arn'
+    Type: AWS::Lambda::Permission
+  UniFXAlarmRule:
+    Properties:
+      EventPattern:
+        resources:
+          - !GetAtt 'UnifxPercentCompleteAlarm10.Arn'
+          - !GetAtt 'UnifxPercentCompleteAlarm20.Arn'
+          - !GetAtt 'UnifxPercentCompleteAlarm30.Arn'
+          - !GetAtt 'UnifxPercentCompleteAlarm40.Arn'
+          - !GetAtt 'UnifxPercentCompleteAlarm50.Arn'
+          - !GetAtt 'UnifxPercentCompleteAlarm60.Arn'
+          - !GetAtt 'UnifxPercentCompleteAlarm70.Arn'
+          - !GetAtt 'UnifxPercentCompleteAlarm80.Arn'
+          - !GetAtt 'UnifxPercentCompleteAlarm90.Arn'
+          - !GetAtt 'UnifxPercentCompleteAlarm100.Arn'
+        source:
+          - aws.cloudwatch
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt 'UniFXLambda.Arn'
+          Id: UniFXLambda
+    Type: AWS::Events::Rule
+  UniFXDestinationBucketCreds:
+    Properties:
+      Description: Destination bucket access key and secret.
+      SecretString: !Sub '{"access_key_id":"${DestinationBucketAccessKeyID}","secret_access_key":"${DestinationBucketSecretAccessKey}"}'
+    Type: AWS::SecretsManager::Secret
+  UniFXLambda:
+    Properties:
+      Code:
+        S3Bucket: !Sub 'unifx-lambda-${AWS::Region}'
+        S3Key: unifx-lambda.zip
+      Environment:
+        Variables:
+          DASHBOARD: !Sub '${AWS::StackName}-Dashboard'
+          DESTINATION_BUCKET: !Ref 'DestinationBucket'
+          DESTINATION_BUCKET_CREDS: !If
+            - HasDestinationCreds
+            - !Ref 'UniFXDestinationBucketCreds'
+            - !Ref 'AWS::NoValue'
+          DESTINATION_PREFIX: !Ref 'DestinationPrefix'
+          EXCLUDE_FILTER_PATTERN: !Ref 'ExcludeFilterPattern'
+          EXCLUDE_FILTER_TYPE: !Ref 'ExcludeFilterType'
+          EXCLUDE_TEMP_FILES: !Ref 'ExcludeTempFiles'
+          INCLUDE_FILTER_PATTERN: !Ref 'IncludeFilterPattern'
+          INCLUDE_FILTER_TYPE: !Ref 'IncludeFilterType'
+          MAX_FILE_SIZE_FILTER: !Ref 'MaxFileSizeFilter'
+          MAX_INVOCATIONS: !Ref 'MaxInvocations'
+          MIN_FILE_SIZE_FILTER: !Ref 'MinFileSizeFilter'
+          NOC_API: Prod
+          PASSPHRASE_SECRET_ID: !If
+            - HasPassphrase
+            - !Ref 'UniFXPassphraseSecret'
+            - !Ref 'AWS::NoValue'
+          PREV_TOC_HANDLE: !Ref 'PrevUniFSTOCHandle'
+          PRODUCT_KEY: !Ref 'ProductKey'
+          QUEUE_URL: !Ref 'UniFXQueue'
+          SOURCE_BUCKET: !Ref 'SourceBucket'
+          SOURCE_BUCKET_CREDS: !If
+            - HasSourceCreds
+            - !Ref 'UniFXSourceBucketCreds'
+            - !Ref 'AWS::NoValue'
+          STARTING_POINT: !Ref 'StartingPoint'
+          TOC_HANDLE: !Ref 'UniFSTOCHandle'
+          VOLUME_KEY_PARAMETER: !Ref 'VolumeKeyParameter'
+      Handler: unifx.serverless.aws.app.main
+      MemorySize: 3008
+      ReservedConcurrentExecutions: !Ref 'MaxInvocations'
+      Role: !GetAtt 'UniFXLambdaExecutionRole.Arn'
+      Runtime: python3.8
+      Timeout: 900
+    Type: AWS::Lambda::Function
+  UniFXLambdaExecutionRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  - '*'
+                Sid: CloudWatchLogsAccess
+              - Action:
+                  - ssm:GetParametersByPath
+                Effect: Allow
+                Resource:
+                  - !Sub 'arn:aws:ssm:*:*:parameter${VolumeKeyParameter}'
+                Sid: SSMAccessToVolumeKeyParam
+              - Action:
+                  - secretsmanager:GetSecretValue
+                Effect: Allow
+                Resource:
+                  - !Ref 'UniFXPassphraseSecret'
+                Sid: SecretsManagerAccessPassphraseCreds
+              - Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:ChangeMessageVisibility
+                  - sqs:GetQueueAttributes
+                Effect: Allow
+                Resource:
+                  - !GetAtt 'UniFXQueue.Arn'
+                Sid: WorkQueueAccess
+              - Action:
+                  - sqs:SendMessage
+                  - sqs:GetQueueAttributes
+                Effect: Allow
+                Resource:
+                  - arn:aws:sqs:us-east-1:501399441218:dnoc1-us-east-1-acme
+                  - arn:aws:sqs:us-east-2:501399441218:dnoc2-us-east-2-acme
+                  - arn:aws:sqs:us-east-1:354659139705:pnoc1-us-east-1-acme
+                  - arn:aws:sqs:us-east-2:354659139705:pnoc2-us-east-2-acme
+                Sid: MetricsQueueAccess
+              - Action:
+                  - lambda:InvokeFunction
+                  - lambda:PutFunctionConcurrency
+                Effect: Allow
+                Resource:
+                  - '*'
+                Sid: LambdaInvoke
+              - Action:
+                  - cloudwatch:GetDashboard
+                  - cloudwatch:PutDashboard
+                Effect: Allow
+                Resource:
+                  - !Sub 'arn:aws:cloudwatch:*:*:dashboard/${AWS::StackName}-Dashboard'
+                Sid: DashboardAccess
+              - Action:
+                  - cloudwatch:GetMetricData
+                Effect: Allow
+                Resource:
+                  - '*'
+                Sid: Metrics
+              - Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Effect: Allow
+                Resource:
+                  - !Sub 'arn:aws:s3:::${SourceBucket}/*'
+                  - !Sub 'arn:aws:s3:::${SourceBucket}'
+                Sid: SourceBucketReadAccess
+              - Action:
+                  - secretsmanager:GetSecretValue
+                Effect: Allow
+                Resource:
+                  - !Ref 'UniFXSourceBucketCreds'
+                Sid: SecretsManagerAccessSrcBucketCreds
+              - Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:AbortMultipartUpload
+                  - s3:ListBucketMultipartUploads
+                Effect: Allow
+                Resource:
+                  - !Sub 'arn:aws:s3:::${DestinationBucket}/*'
+                  - !Sub 'arn:aws:s3:::${DestinationBucket}'
+                Sid: DestinationBucketReadWriteAccess
+              - Action:
+                  - secretsmanager:GetSecretValue
+                Effect: Allow
+                Resource:
+                  - !Ref 'UniFXDestinationBucketCreds'
+                Sid: SecretsManagerAccessBucketCreds
+          PolicyName: LambdaExecutionRolePolicy
+    Type: AWS::IAM::Role
+  UniFXLauncher:
+    DependsOn:
+      - FilesFound
+      - FilesFoundBelowMPU
+      - BytesFoundTimestamp
+      - BytesFound
+      - BytesFoundBelowMPU
+      - FailedFiles
+      - FailedBytes
+      - DirsFound
+      - DirDepth
+      - FilesExported
+      - BytesExported
+      - BytesExportedTimestamp
+      - DirSize
+      - ErrorCount
+      - BytesPut
+      - BytesPutTimestamp
+    Properties:
+      ServiceToken: !GetAtt 'UniFXLambda.Arn'
+    Type: Custom::LamdaTrigger
+  UniFXLogs:
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - /aws/lambda/
+          - !Ref 'UniFXLambda'
+      RetentionInDays: 7
+    Type: AWS::Logs::LogGroup
+  UniFXPassphraseSecret:
+    Properties:
+      Description: Passphrase for encrypted UniFS volume
+      SecretString: !Sub '{"passphrase": "${VolumeKeyPassphrase}"}'
+    Type: AWS::SecretsManager::Secret
+  UniFXQueue:
+    Type: AWS::SQS::Queue
+  UniFXSourceBucketCreds:
+    Properties:
+      Description: Source bucket access key and secret.
+      SecretString: !Sub '{"access_key_id":"${SourceBucketAccessKeyID}","secret_access_key":"${SourceBucketSecretAccessKey}"}'
+    Type: AWS::SecretsManager::Secret
+  UnifxPercentCompleteAlarm10:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 10
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
+  UnifxPercentCompleteAlarm100:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 100
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
+  UnifxPercentCompleteAlarm20:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 20
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
+  UnifxPercentCompleteAlarm30:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 30
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
+  UnifxPercentCompleteAlarm40:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 40
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
+  UnifxPercentCompleteAlarm50:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 50
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
+  UnifxPercentCompleteAlarm60:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 60
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
+  UnifxPercentCompleteAlarm70:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 70
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
+  UnifxPercentCompleteAlarm80:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 80
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
+  UnifxPercentCompleteAlarm90:
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ((bytesexported + failedbytes) / bytesfound) * 100
+          Id: percentcomplete
+          Label: PercentComplete
+          ReturnData: 'true'
+        - Id: bytesexported
+          Label: BytesExported
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesExported
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: bytesfound
+          Label: BytesFound
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - BytesFound
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+        - Id: failedbytes
+          Label: FailedBytes
+          MetricStat:
+            Metric:
+              MetricName: !Join
+                - '-'
+                - - !Ref 'UniFXLambda'
+                  - FailedBytes
+              Namespace: UniFX
+            Period: 86400
+            Stat: Sum
+          ReturnData: 'false'
+      Threshold: 90
+      TreatMissingData: ignore
+    Type: AWS::CloudWatch::Alarm
