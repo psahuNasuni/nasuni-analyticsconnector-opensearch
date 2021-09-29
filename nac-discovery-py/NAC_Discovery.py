@@ -67,8 +67,10 @@ def lambda_handler(event, context):
         print("data['object_key']",data['object_key'])  
         obj1 = s3.get_object(Bucket=data['dest_bucket'], Key=data['object_key'])
         data['content'] = obj1['Body'].read().decode('utf-8')        
-        
-        data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['object_key']
+        if secret_data_internal['web_access_appliance_address']!='not_found':
+            data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['object_key']
+        else:
+            data['access_url']=secret_data_internal['web_access_appliance_address']
         print('data',data)
         print('secret_data_internal',secret_data_internal)
         es_obj = launch_es(secret_data_internal['es_url'],data['awsRegion'])

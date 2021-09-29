@@ -18,7 +18,7 @@ export NACTerraformInitFailed=303
     # Get the NAC discovery lambda function name
     DISCOVERY_LAMBDA_NAME=$(aws secretsmanager get-secret-value --secret-id nac-es-internal | jq -r '.SecretString' | jq -r '.discovery_lambda_name')
     echo "DISCOVERY_LAMBDA_NAME ::: $DISCOVERY_LAMBDA_NAME"
-
+    i_cnt=0
     ### Check If Lambda Execution Completed ?
     LAST_UPDATE_STATUS="runnung"
     while [ "$LAST_UPDATE_STATUS" != "InProgress" ]
@@ -40,8 +40,17 @@ export NACTerraformInitFailed=303
             $COMMAND
             echo "COMPLETED ::: CLEANUP NAC STACK and dependent resources ! ! ! ! "
             exit 0
+        elif [ "$LAST_UPDATE_STATUS" == "" ]; then
+            echo "Lambda Function Not found."
+            exit 0
         fi
+        let i_cnt=i_cnt+1
         $sleep 5
+        if [ i_cnt == 10 ]; then
+            echo "WARN ::: TimeOut"
+            exit 1
+        fi
+
     done
 } || { 
 	echo "Failed NAC Povisioning" && throw $NACStackCreationFailed

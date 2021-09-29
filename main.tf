@@ -70,10 +70,6 @@ resource "aws_cloudformation_stack" "nac_stack" {
   on_failure         = var.on_failure
   timeout_in_minutes = var.timeout_in_minutes
   policy_body        = var.policy_body
-
-  # provisioner "local-exec" {
-  #   command = "rm -rf *.txt"
-  # }
   depends_on = [data.local_file.accZes,
     data.local_file.secRet,
     aws_lambda_function.lambda_function,
@@ -136,14 +132,13 @@ locals {
     es_url                    = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.internal_secret.secret_string))["es_url"]
     nac_stack                 = "nct-NCE-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
     discovery_lambda_role_arn = aws_iam_role.lambda_exec_role.arn
+    discovery_lambda_name     = aws_lambda_function.lambda_function.function_name
     aws_region                = var.region
     user_secret_name          = var.user_secret
     volume_name               = var.volume_name
-    web_access_appliance_address	= jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["web_access_appliance_address"]
+    # web_access_appliance_address	= jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["web_access_appliance_address"]
+    web_access_appliance_address  = data.local_file.appliance_address.content
     destination_prefix        = "/NCT/NCE/${var.volume_name}/${data.local_file.toc.content}"
-    /* external_share_volume_name = data.local_file.external_share_volume_name.content
-    external_share_url = data.local_file.external_share_url.content */
-    external_share_url = var.external_share_url
   }
 }
 
@@ -409,11 +404,9 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
     lambda_function_arn = aws_lambda_function.lambda_function.arn
     events              = ["s3:ObjectCreated:*"]
     filter_prefix       = ""
-    # filter_prefix       = "/NCT/NCE/${var.volume_name}/${data.local_file.toc.content}/"
     filter_suffix       = ""
   }
   depends_on = [aws_lambda_permission.allow_bucket]
-  /* depends_on = [aws_lambda_permission.allow_bucket,data.local_file.toc] */
 }
 
 ########################################## Internal Secret  ########################################################
@@ -464,27 +457,19 @@ locals {
   nmc_api_endpoint = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nmc_api_endpoint"]
   nmc_api_username = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nmc_api_username"]
   nmc_api_password = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nmc_api_password"]
+  web_access_appliance_address = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["web_access_appliance_address"]
+      
 }
 
 resource "null_resource" "nmc_api_data" {
   provisioner "local-exec" {
-    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec}"
+    command = "python fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address}"
   }
   provisioner "local-exec" {
     when    = destroy
     command = "rm -rf nmc_api_data_*.txt"
   }
 }
-
-# data "local_file" "external_share_url" {
-#   filename   = "${path.cwd}/nmc_api_data_external_share_url_${random_id.r_id.dec}.txt"
-#   depends_on = [null_resource.nmc_api_data]
-# }
-# data "local_file" "external_share_volume_name" {
-#   filename   = "${path.cwd}/nmc_api_data_external_share_volume_name_${random_id.r_id.dec}.txt"
-#   depends_on = [null_resource.nmc_api_data]
-# }
-
 
 data "local_file" "toc" {
   filename   = "${path.cwd}/nmc_api_data_root_handle_${random_id.r_id.dec}.txt"
@@ -518,5 +503,18 @@ output "volume_guid" {
   value      = data.local_file.v_guid.content
   depends_on = [data.local_file.v_guid]
 }
+
+
+data "local_file" "appliance_address" {
+  filename   = "${path.cwd}/nmc_api_data_external_share_url_${random_id.r_id.dec}.txt"
+  depends_on = [null_resource.nmc_api_data]
+}
+
+
+output "appliance_address" {
+  value      = data.local_file.appliance_address.content
+  depends_on = [data.local_file.appliance_address]
+}
+
 
 ############################################################################
