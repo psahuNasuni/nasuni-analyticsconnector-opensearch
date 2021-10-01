@@ -475,7 +475,7 @@ locals {
 
 resource "null_resource" "nmc_api_data" {
   provisioner "local-exec" {
-    command = "python fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address}"
+    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address}"
   }
   provisioner "local-exec" {
     when    = destroy
