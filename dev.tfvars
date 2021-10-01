@@ -17,6 +17,3 @@ aws_profile = "<<AWS Profile>>"
 ##  Provide the NMC Volume Name
 volume_name = "<<NMC Volume Name>>"
 
-## Provide the external_share_url  - THis is a temporary solution .
-##              >> Once NMC API is fixed , this value will ve picked from NMC API
-external_share_url = "<<external_share_url>>"

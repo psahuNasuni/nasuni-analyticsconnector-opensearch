@@ -312,6 +312,12 @@ resource "aws_iam_policy" "GetSecretValue_access" {
             "Effect": "Allow",
             "Action": "secretsmanager:GetSecretValue",
             "Resource": "${data.aws_secretsmanager_secret.internal_secret.arn}"
+        },
+        {
+            "Sid": "VisualEditor2",
+            "Effect": "Allow",
+            "Action": "secretsmanager:GetSecretValue",
+            "Resource": "${data.aws_secretsmanager_secret.admin_secret.arn}"
         }
     ]
 }
@@ -417,6 +423,12 @@ data "aws_secretsmanager_secret" "internal_secret" {
 data "aws_secretsmanager_secret_version" "internal_secret" {
   secret_id = data.aws_secretsmanager_secret.internal_secret.id
 }
+data "aws_secretsmanager_secret" "admin_secret" {
+  name = var.admin_secret
+}
+data "aws_secretsmanager_secret_version" "admin_secret" {
+  secret_id = data.aws_secretsmanager_secret.admin_secret.id
+}
 
 ################################################# END LAMBDA########################################################
 
@@ -463,7 +475,7 @@ locals {
 
 resource "null_resource" "nmc_api_data" {
   provisioner "local-exec" {
-    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address}"
+    command = "python fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address}"
   }
   provisioner "local-exec" {
     when    = destroy

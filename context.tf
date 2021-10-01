@@ -24,19 +24,19 @@ module "this" {
 variable "context" {
   type = any
   default = {
-    enabled             = true
-    namespace           = null
-    environment         = null
-    stage               = null
-    name                = null
-    delimiter           = null
-    attributes          = []
-    tags                = {
-                              Application  = "Nasuni Analytics Connector with Elasticsearch"
-                              Developer = "Nasuni"
-                              PublicationType = "Nasuni Community Tool"
-                              Version = "V 0.1"
-                          }
+    enabled     = true
+    namespace   = null
+    environment = null
+    stage       = null
+    name        = null
+    delimiter   = null
+    attributes  = []
+    tags = {
+      Application     = "Nasuni Analytics Connector with Elasticsearch"
+      Developer       = "Nasuni"
+      PublicationType = "Nasuni Community Tool"
+      Version         = "V 0.1"
+    }
     additional_tag_map  = {}
     regex_replace_chars = null
     label_order         = []

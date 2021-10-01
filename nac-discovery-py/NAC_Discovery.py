@@ -13,43 +13,40 @@ import shlex,subprocess
 from urllib.parse import unquote_plus
 import elasticsearch
 
-# region = 'us-east-1'  # For example, us-west-1
-# service = 'es'
-# credentials = boto3.Session().get_credentials()
-# awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, service, session_token=credentials.token)
 
-# host = 'search-es-strikers-iwclhxjxbwgqzpnsvl4iku7nfq.us-east-1.es.amazonaws.com'  # The ES domain endpoint with
-# # https:// and a trailing slash index = 'movies' url = host + '/' + index + '/_search'
-
-# es = Elasticsearch(hosts=[{'host': host, 'port': 443}], http_auth=awsauth, use_ssl=True, verify_certs=True,
-#                   connection_class=RequestsHttpConnection)
 logging.getLogger().setLevel(logging.INFO)
 logging.info(f'date={date}')
 cfn = boto3.resource('cloudformation')
 def lambda_handler(event, context):
     logging.info('lambda_handler starts...')
-    s3 = boto3.client('s3')
-    data = {}
+    s3 = boto3.client('s3')        
+    # data = {}
+    doc_list=[]
     aws_reg= event['Records'][0]['awsRegion']
     print(aws_reg)
     secret_data_internal = get_secret('nac-es-internal',aws_reg)
-    # secret_data_prod = get_secret(secret_data_internal['user-secret-name'],secret_data_internal['aws-region']) 
+    secret_nct_nce_admin = get_secret('nct/nce/os/admin',aws_reg)
     
     role = secret_data_internal['discovery_lambda_role_arn']
     role_data = '{ "backend_roles":["' + role + '"],"hosts": [],"users": ["automation"]}'
     print('role_data',role_data)
     with open("/tmp/"+"/data.json", "w") as write_file:
         write_file.write(role_data)
-    link = secret_data_internal['es_url']
+        
+    link=secret_nct_nce_admin['nac_kibana_url']
+    link=link[:link.index('_')]
+    username=secret_nct_nce_admin['nac_es_admin_user']
+    password=secret_nct_nce_admin['nac_es_admin_password']
     data_file_obj = '/tmp/data.json'
-    merge_link = '\"https://'+link+'/_opendistro/_security/api/rolesmapping/all_access\"'
-    cmd = 'curl -X PUT -u \"automation:Dangerous@123\" -H "Content-Type:application/json" ' + merge_link + ' -d \"@/tmp/data.json\"'
-
+    merge_link = '\"https://'+link+'_opendistro/_security/api/rolesmapping/all_access\"'
+    cmd = 'curl -X PUT -u \"'+username+':'+password+'\" -H "Content-Type:application/json" ' + merge_link + ' -d \"@/tmp/data.json\"'
+    print(cmd)
     status, output = subprocess.getstatusoutput(cmd)
     print(output)
 
     for record in event['Records']:
         print(record)
+        data={}
         data['dest_bucket'] = record['s3']['bucket']['name']
         data['object_key'] = unquote_plus(record['s3']['object']['key'])
         data['size'] = str(record['s3']['object'].get('size', -1))
@@ -60,7 +57,7 @@ def lambda_handler(event, context):
             data['extension'] = data['object_key'][data['object_key'].index('.') + 1:]
         except:
             data['extension'] = ''
-			
+            
         data['volume_name'] = secret_data_internal['volume_name']
         data['root_handle'] = secret_data_internal['root_handle'].replace('.','_').lower()
         data['source_bucket'] = secret_data_internal['discovery_source_bucket']
@@ -73,17 +70,15 @@ def lambda_handler(event, context):
             data['access_url']=secret_data_internal['web_access_appliance_address']
         print('data',data)
         print('secret_data_internal',secret_data_internal)
-        es_obj = launch_es(secret_data_internal['es_url'],data['awsRegion'])
- 
-        connect_es(es_obj,data['root_handle'], data)
-        # del_cloudformation_stack(secret_data_internal['nac-stack'])
-        #stack_name=secret_data_internal['nac_stack']
-        #stack = cfn.Stack(stack_name)
-        #stack.delete()
+        es_obj = launch_es(secret_nct_nce_admin['nac_es_url'],data['awsRegion'])
+        doc_list += [data]
+        # connect_es(es_obj,data['root_handle'], data)
+        connect_es(es_obj,data['root_handle'], doc_list)
+
     logging.info('lambda_handler ends...')
 
 def launch_es(es_url,region):
-    # region = 'us-east-1'  # For example, us-west-1
+
     service = 'es'
     credentials = boto3.Session().get_credentials()
     awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, service, session_token=credentials.token)
@@ -91,85 +86,26 @@ def launch_es(es_url,region):
                   connection_class=RequestsHttpConnection)
     return es
 
-def del_cloudformation_stack(stack_name):
-    try:
-
-        print('Inside Del cloudformation')
-        print(stack_name)
-        # cfn = boto3.resource('cloudformation')
-        # stacks = [stack for stack in cfn.stacks.all() if stack.stack_status in statuses]
-        print(stack_name)
-        print(stacks)
-        # cfn = boto3.resource('cloudformation')
-        stack = cfn.Stack(stack_name)
-        stack.delete()
-    except Exception as e:
-        logging.error('Error occurred..',e)
-
-def create_index_name(data):
-    # dot_index = str(file_name).index('.')
-    # slash = str(file_name).index('/')
-    # split_files_n_folders = data['object_key'].split('/')
-    # file_name = split_files_n_folders[len(split_files_n_folders) - 1]
-    # if file_name.isspace():
-    #     str(file_name).replace(' ', '_')
-    # index = data['nmc_details'] + '_' + data['filer_details'] + '_' + (
-    #     data['object_key'].replace('/', '_').replace('.', '_'))
-    # # index = (file_name + '_' + str(size) + '_' + str(timing[:19]).replace(':', '_')).replace('.', '_')
-    # lower_name_index = index.lower()
-    # return lower_name_index
-    logging.info('create_index_name')
-
 def connect_es(es,index, data):
     # print(index)
     update_cnt = 0
     max_id = 0
     try:
-        # for elem in es.cat.indices(format="json"):
-        #     print(index) 
-        #     query = {
-        #         'query': {
-        #             'bool': {
-        #                 'must': [
-        #                     {'match': {'content': data['content']}},
-        #                     {'match': {'object_key': data['object_key']}}
-        #                 ]
-        #             }
-        #         }
-        #     }
-        #     # query = {
-        #     #     'query': {
-        #     #         'bool': {
-        #     #             'filter': [
-        #     #                 {'term': {'content': data['content']}},
-        #     #                 {'term': {'object_key': data['object_key']}} 
-        #     #             ]
-        #     #         }
-        #     #     }
-        #     # }
-        #     resp = es.search(index=elem['index'], body=query)
-        #     for i in resp['hits']['hits']:
-        #         print(i)
-        #         es.index(index=i['_index'], doc_type="_doc", id=i['_id'], body=data)
-        #         print(es.get(index=i['_index'], doc_type="_doc", id=i['_id']))
-        #         update_cnt += 1
-        # if update_cnt == 0: 
-        #     if es.indices.exists(index=index):
-        #         res = es.count(index=index)
-        #         max_id=int(res['count'])
-        #         logging.info(max_id)
-        #     es.index(index=index, doc_type="_doc", id=max_id + 1, body=data)
-        #     print(es.get(index=index, doc_type="_doc", id=max_id + 1))
-        es.index(index=index, doc_type="_doc", id=1, body=data)
-        print(es.get(index=index, doc_type="_doc", id=1))
+        # es.index(index=index, doc_type="_doc", id=1, body=data)
+        # print(es.get(index=index, doc_type="_doc", id=1))
+        logging.info("\nAttempting to index the list of docs using helpers.bulk()")
+        # use the helpers library's Bulk API to index list of Elasticsearch docs
+        resp = helpers.bulk(es, data, index=index, doc_type="_doc")
+        # print the response returned by Elasticsearch
+        print("helpers.bulk() RESPONSE:", resp)
+        print("helpers.bulk() RESPONSE:", json.dumps(resp, indent=4))
     except Exception as e:
         logging.error('ERROR: {0}'.format(str(e)))
         logging.error('ERROR: Unable to index line:"{0}"'.format(str(data['object_key'])))
         print(e)
         
 def get_secret(secret_name,region_name):
-    # secret_name = "prod/nac"
-    # region_name = "us-east-1"
+
     secret = ''
     session = boto3.session.Session()
     client = session.client(
@@ -181,7 +117,7 @@ def get_secret(secret_name,region_name):
         get_secret_value_response = client.get_secret_value(
             SecretId=secret_name
         )
-        # print('get_secret_value_response',get_secret_value_response)
+
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
             print("The requested secret " + secret_name + " was not found")

@@ -91,7 +91,9 @@ variable "runtime" {
 variable "aws_profile" {
   default = "nasuni"
 }
-
+variable "admin_secret" {
+  default = "nct/nce/os/admin"
+}
 variable "internal_secret" {
   default = "nac-es-internal"
 }
