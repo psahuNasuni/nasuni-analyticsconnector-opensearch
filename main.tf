@@ -115,21 +115,35 @@ resource "aws_lambda_function" "lambda_function" {
 
 }
 
+
+########################################## Internal Secret  ########################################################
+data "aws_secretsmanager_secret" "admin_secret" {
+  name = var.admin_secret
+}
+data "aws_secretsmanager_secret_version" "admin_secret" {
+  secret_id = data.aws_secretsmanager_secret.admin_secret.id
+}
+
+resource "aws_secretsmanager_secret" "internal_secret_u" {
+  name = "nct-nce-internal-${random_id.nac_unique_stack_id.hex}"
+  description = "Nasuni Analytics Connector's version specific internal secret. This will be created as well as destroyed along with NAC."
+}
 resource "aws_secretsmanager_secret_version" "internal_secret_u" {
-  secret_id     = data.aws_secretsmanager_secret.internal_secret.id
+  secret_id     = aws_secretsmanager_secret.internal_secret_u.id
   secret_string = jsonencode(local.secret_data_to_update)
   depends_on = [
     aws_iam_role.lambda_exec_role,
     aws_lambda_function.lambda_function,
   ]
-}
+} 
+
 
 locals {
   secret_data_to_update = {
     # last-run = timestamp()
     root_handle               = data.local_file.toc.content
     discovery_source_bucket   = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["destination_bucket"]
-    es_url                    = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.internal_secret.secret_string))["es_url"]
+    es_url                    = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.admin_secret.secret_string))["nac_es_url"]
     nac_stack                 = "nct-NCE-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
     discovery_lambda_role_arn = aws_iam_role.lambda_exec_role.arn
     discovery_lambda_name     = aws_lambda_function.lambda_function.function_name
@@ -311,7 +325,7 @@ resource "aws_iam_policy" "GetSecretValue_access" {
             "Sid": "VisualEditor1",
             "Effect": "Allow",
             "Action": "secretsmanager:GetSecretValue",
-            "Resource": "${data.aws_secretsmanager_secret.internal_secret.arn}"
+            "Resource": "${aws_secretsmanager_secret.internal_secret_u.arn}"
         },
         {
             "Sid": "VisualEditor2",
@@ -415,20 +429,6 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
   depends_on = [aws_lambda_permission.allow_bucket]
 }
 
-########################################## Internal Secret  ########################################################
-
-data "aws_secretsmanager_secret" "internal_secret" {
-  name = var.internal_secret
-}
-data "aws_secretsmanager_secret_version" "internal_secret" {
-  secret_id = data.aws_secretsmanager_secret.internal_secret.id
-}
-data "aws_secretsmanager_secret" "admin_secret" {
-  name = var.admin_secret
-}
-data "aws_secretsmanager_secret_version" "admin_secret" {
-  secret_id = data.aws_secretsmanager_secret.admin_secret.id
-}
 
 ################################################# END LAMBDA########################################################
 
@@ -475,7 +475,7 @@ locals {
 
 resource "null_resource" "nmc_api_data" {
   provisioner "local-exec" {
-    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address}"
+    command = "python fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address}"
   }
   provisioner "local-exec" {
     when    = destroy
