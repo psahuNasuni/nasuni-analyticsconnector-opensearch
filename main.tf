@@ -528,5 +528,9 @@ output "appliance_address" {
   depends_on = [data.local_file.appliance_address]
 }
 
-
+resource "local_file" "Lambda_Name" {
+    content  = aws_lambda_function.lambda_function.function_name
+    filename = "Lambda_Name.txt"
+  depends_on = [aws_lambda_function.lambda_function]
+}
 ############################################################################
