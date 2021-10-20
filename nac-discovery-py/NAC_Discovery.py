@@ -19,13 +19,17 @@ logging.info(f'date={date}')
 cfn = boto3.resource('cloudformation')
 def lambda_handler(event, context):
     logging.info('lambda_handler starts...')
+    print("Lambda function ARN:", context.invoked_function_arn)
+    # u_id=context.invoked_function_arn
+    print('***********************************************')
     s3 = boto3.client('s3')        
-    # data = {}
+    #Lambda function ARN: arn:aws:lambda:us-east-2:514960042727:function:nct-NCE-lambda-NAC_Discovery-b511bc3f12ba
+
     doc_list=[]
     aws_reg= event['Records'][0]['awsRegion']
     print(aws_reg)
-    secret_data_internal = get_secret('nac-es-internal',aws_reg)
-    secret_nct_nce_admin = get_secret('nct/nce/os/admin',aws_reg)
+    secret_data_internal = get_secret('nct-nce-internal-'+context.invoked_function_arn[76:],aws_reg)
+    secret_nct_nce_admin = get_secret('nct/nce/os/admin',aws_reg) 
     
     role = secret_data_internal['discovery_lambda_role_arn']
     role_data = '{ "backend_roles":["' + role + '"],"hosts": [],"users": ["automation"]}'
@@ -71,9 +75,9 @@ def lambda_handler(event, context):
         print('data',data)
         print('secret_data_internal',secret_data_internal)
         es_obj = launch_es(secret_nct_nce_admin['nac_es_url'],data['awsRegion'])
-        doc_list += [data]
+        # doc_list += [data]
         # connect_es(es_obj,data['root_handle'], data)
-        connect_es(es_obj,data['root_handle'], doc_list)
+        connect_es(es_obj,data['root_handle'], data) 
 
     logging.info('lambda_handler ends...')
 
@@ -85,24 +89,38 @@ def launch_es(es_url,region):
     es = Elasticsearch(hosts=[{'host': es_url, 'port': 443}], http_auth=awsauth, use_ssl=True, verify_certs=True,
                   connection_class=RequestsHttpConnection)
     return es
-
+    
 def connect_es(es,index, data):
-    # print(index)
-    update_cnt = 0
-    max_id = 0
+    #CTPROJECT-125
     try:
-        # es.index(index=index, doc_type="_doc", id=1, body=data)
-        # print(es.get(index=index, doc_type="_doc", id=1))
-        logging.info("\nAttempting to index the list of docs using helpers.bulk()")
-        # use the helpers library's Bulk API to index list of Elasticsearch docs
-        resp = helpers.bulk(es, data, index=index, doc_type="_doc")
-        # print the response returned by Elasticsearch
-        print("helpers.bulk() RESPONSE:", resp)
-        print("helpers.bulk() RESPONSE:", json.dumps(resp, indent=4))
+        flag = 0
+        for elem in es.cat.indices(format="json"):
+            query = {"query": {"match_all": {}}}
+            resp = es.search(index=elem['index'], body=query)
+            for i in resp['hits']['hits']:
+                idx_content = i['_source'].get('content', 0)
+                idx_object_key = i['_source'].get('object_key', 0)
+                if idx_content == data['content'] and idx_object_key == data['object_key']:
+                    flag = 1
+                    es.index(index=i['_index'], doc_type="_doc", id=i['_id'], body=data)
+                    break
+                    # print(es.get(index=i['_index'], doc_type="_doc", id=i['_id']))
+        if flag == 0:
+            doc_list = []
+            doc_list += [data]
+            logging.info("\nAttempting to index the list of docs using helpers.bulk()")
+            # use the helpers library's Bulk API to index list of Elasticsearch docs
+            resp = helpers.bulk(es, doc_list, index=data['root_handle'], doc_type="_doc")
+            # print the response returned by Elasticsearch
+            print("helpers.bulk() RESPONSE:", resp)
+            print("helpers.bulk() RESPONSE:", json.dumps(resp, indent=4))
+            # pprint.pprint(resp)
+            # print(elem['index'])
     except Exception as e:
         logging.error('ERROR: {0}'.format(str(e)))
         logging.error('ERROR: Unable to index line:"{0}"'.format(str(data['object_key'])))
         print(e)
+
         
 def get_secret(secret_name,region_name):
 
