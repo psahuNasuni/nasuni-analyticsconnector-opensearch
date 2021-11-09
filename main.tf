@@ -431,36 +431,15 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 
 
 ################################################# END LAMBDA########################################################
-
-resource "random_id" "r_id" {
-  byte_length = 1
-}
-resource "null_resource" "secRet" {
-  provisioner "local-exec" {
-    command = "aws configure get aws_secret_access_key --profile ${var.aws_profile} > Zsecret_${random_id.r_id.dec}.txt"
-  }
-  provisioner "local-exec" {
-    when    = destroy
-    command = "rm -rf Zsecret_*.txt"
-  }
-}
-resource "null_resource" "accZes" {
-  provisioner "local-exec" {
-    command = "aws configure get aws_access_key_id --profile ${var.aws_profile} > Zaccess_${random_id.r_id.dec}.txt"
-  }
-  provisioner "local-exec" {
-    when    = destroy
-    command = "rm -rf Zaccess_*.txt"
-  }
-}
 data "local_file" "secRet" {
-  filename   = "${path.cwd}/Zsecret_${random_id.r_id.dec}.txt"
-  depends_on = [null_resource.secRet]
+  filename   = "${path.cwd}/Zsecret_${random_id.nac_unique_stack_id.hex}.txt"
+  depends_on = [null_resource.nmc_api_data]
+
 }
 
 data "local_file" "accZes" {
-  filename   = "${path.cwd}/Zaccess_${random_id.r_id.dec}.txt"
-  depends_on = [null_resource.accZes]
+  filename   = "${path.cwd}/Zaccess_${random_id.nac_unique_stack_id.hex}.txt"
+  depends_on = [null_resource.nmc_api_data]
 }
 
 ############################## NMC API CALL ###############################
@@ -479,7 +458,7 @@ resource "null_resource" "nmc_api_data" {
   }
   provisioner "local-exec" {
     when    = destroy
-    command = "rm -rf nmc_api_data_*.txt"
+    command = "rm -rf *.txt"
   }
 }
 
