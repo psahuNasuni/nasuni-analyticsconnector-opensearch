@@ -17,8 +17,29 @@ logging.info(f'date={date}')
 if not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None):
     ssl._create_default_https_context = ssl._create_unverified_context
 
+file_name, endpoint, username, password, volume_name, rid, web_access_appliance_address = sys.argv
 try:
-    file_name, endpoint, username, password, volume_name, rid, web_access_appliance_address = sys.argv
+    session = boto3.Session(profile_name="nasuni")
+    credentials = session.get_credentials()
+
+    credentials = credentials.get_frozen_credentials()
+    access_key = credentials.access_key
+    secret_key = credentials.secret_key
+    access_key_file = open('access_key_file' + rid + '.txt', 'w')
+    access_key_file.write(access_key)
+    print(access_key)
+
+    secret_key_file = open('secret_key_file' + rid + '.txt', 'w')
+    secret_key_file.write(secret_key)
+    print(access_key)
+    access_key_file.close()
+    secret_key_file.close()
+
+except Exception as e:
+    print('Runtime error while extracting aws keys')
+
+try:
+    #file_name, endpoint, username, password, volume_name, rid, web_access_appliance_address = sys.argv
     logging.info(sys.argv)
     url = 'https://' + endpoint + '/auth/login/'
     logging.info(url)
