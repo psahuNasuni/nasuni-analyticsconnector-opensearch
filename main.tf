@@ -431,14 +431,17 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 
 
 ################################################# END LAMBDA########################################################
+resource "random_id" "r_id" {
+  byte_length = 1
+}
 data "local_file" "secRet" {
-  filename   = "${path.cwd}/Zsecret_${random_id.nac_unique_stack_id.hex}.txt"
+  filename   = "${path.cwd}/Zsecret_${random_id.r_id.dec}.txt"
   depends_on = [null_resource.nmc_api_data]
 
 }
 
 data "local_file" "accZes" {
-  filename   = "${path.cwd}/Zaccess_${random_id.nac_unique_stack_id.hex}.txt"
+  filename   = "${path.cwd}/Zaccess_${random_id.r_id.dec}.txt"
   depends_on = [null_resource.nmc_api_data]
 }
 
