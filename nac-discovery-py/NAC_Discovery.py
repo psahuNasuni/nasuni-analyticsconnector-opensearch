@@ -100,8 +100,11 @@ def connect_es(es,index, data):
             for i in resp['hits']['hits']:
                 idx_content = i['_source'].get('content', 0)
                 idx_object_key = i['_source'].get('object_key', 0)
+                print('idx_content',idx_content)
+                print('idx_object_key',idx_object_key)
                 if idx_content == data['content'] and idx_object_key == data['object_key']:
                     flag = 1
+                    print("Indexing is doing when the idx_content and idx_object_key has matched", resp)
                     es.index(index=i['_index'], doc_type="_doc", id=i['_id'], body=data)
                     break
                     # print(es.get(index=i['_index'], doc_type="_doc", id=i['_id']))
