@@ -24,8 +24,9 @@ def lambda_handler(event, context):
     print('***********************************************')
     s3 = boto3.client('s3')        
     #Lambda function ARN: arn:aws:lambda:us-east-2:514960042727:function:nct-NCE-lambda-NAC_Discovery-b511bc3f12ba
-
+    data={}
     doc_list=[]
+    check=0
     aws_reg= event['Records'][0]['awsRegion']
     print(aws_reg)
     secret_data_internal = get_secret('nct-nce-internal-'+context.invoked_function_arn[76:],aws_reg)
@@ -47,10 +48,13 @@ def lambda_handler(event, context):
     print(cmd)
     status, output = subprocess.getstatusoutput(cmd)
     print(output)
-
+    
+    #Deletion of folder from s3
+    
+    
     for record in event['Records']:
         print(record)
-        data={}
+        # data={}
         data['dest_bucket'] = record['s3']['bucket']['name']
         data['object_key'] = unquote_plus(record['s3']['object']['key'])
         data['size'] = str(record['s3']['object'].get('size', -1))
@@ -77,9 +81,28 @@ def lambda_handler(event, context):
         es_obj = launch_es(secret_nct_nce_admin['nac_es_url'],data['awsRegion'])
         # doc_list += [data]
         # connect_es(es_obj,data['root_handle'], data)
-        connect_es(es_obj,data['root_handle'], data) 
+        
+        check=connect_es(es_obj,data['root_handle'], data) 
+    #Deletion of folder from s3
+    if check == 0:
+        print('Insertion into ES success.Hence deleting s3 bucket folder')
+        del_s3_folder(data['object_key'],data['dest_bucket'])
+    else:
+        print('Not deleting the s3 bucket folder all data not got loaded into ES.') 
 
     logging.info('lambda_handler ends...')
+
+def del_s3_folder(full_path,dest_bucket):
+    print("Full Path:-",full_path)
+    path=os.path.dirname(full_path)
+    print("Folder Path:-",path)
+    # folder_path='s3://'+dest_bucket+'/'+path
+    # print("Folder Path:-",folder_path)
+    # #push=subprocess.run(['aws', 's3', 'rm', folder_path, '--recursive'])
+    s3 = boto3.resource('s3') 
+    bucket = s3.Bucket(dest_bucket)
+    bucket.objects.filter(Prefix=path).delete()
+    
 
 def launch_es(es_url,region):
 
@@ -119,10 +142,12 @@ def connect_es(es,index, data):
             print("helpers.bulk() RESPONSE:", json.dumps(resp, indent=4))
             # pprint.pprint(resp)
             # print(elem['index'])
+        return 0
     except Exception as e:
         logging.error('ERROR: {0}'.format(str(e)))
         logging.error('ERROR: Unable to index line:"{0}"'.format(str(data['object_key'])))
         print(e)
+        return 1
 
         
 def get_secret(secret_name,region_name):
