@@ -26,6 +26,7 @@ def lambda_handler(event, context):
     #Lambda function ARN: arn:aws:lambda:us-east-2:514960042727:function:nct-NCE-lambda-NAC_Discovery-b511bc3f12ba
     data={}
     doc_list=[]
+    check=0
     aws_reg= event['Records'][0]['awsRegion']
     print(aws_reg)
     secret_data_internal = get_secret('nct-nce-internal-'+context.invoked_function_arn[76:],aws_reg)
@@ -80,9 +81,14 @@ def lambda_handler(event, context):
         es_obj = launch_es(secret_nct_nce_admin['nac_es_url'],data['awsRegion'])
         # doc_list += [data]
         # connect_es(es_obj,data['root_handle'], data)
-        connect_es(es_obj,data['root_handle'], data) 
+        
+        check=connect_es(es_obj,data['root_handle'], data) 
     #Deletion of folder from s3
-    del_s3_folder(data['object_key'],data['dest_bucket'])
+    if check == 0:
+        print('Insertion into ES success.Hence deleting s3 bucket folder')
+        del_s3_folder(data['object_key'],data['dest_bucket'])
+    else:
+        print('Not deleting the s3 bucket folder all data not got loaded into ES.') 
 
     logging.info('lambda_handler ends...')
 
@@ -136,10 +142,12 @@ def connect_es(es,index, data):
             print("helpers.bulk() RESPONSE:", json.dumps(resp, indent=4))
             # pprint.pprint(resp)
             # print(elem['index'])
+        return 0
     except Exception as e:
         logging.error('ERROR: {0}'.format(str(e)))
         logging.error('ERROR: Unable to index line:"{0}"'.format(str(data['object_key'])))
         print(e)
+        return 1
 
         
 def get_secret(secret_name,region_name):
