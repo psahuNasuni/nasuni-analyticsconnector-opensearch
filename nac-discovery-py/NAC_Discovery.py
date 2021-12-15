@@ -58,22 +58,24 @@ def lambda_handler(event, context):
         data['dest_bucket'] = record['s3']['bucket']['name']
         data['object_key'] = unquote_plus(record['s3']['object']['key'])
         data['size'] = str(record['s3']['object'].get('size', -1))
+        file_name=os.path.basename(data['object_key'])
         data['event_name'] = record['eventName']
         data['event_time'] = record['eventTime']
         data['awsRegion'] = record['awsRegion']
-        try:
-            data['extension'] = data['object_key'][data['object_key'].index('.') + 1:]
-        except:
-            data['extension'] = ''
-            
+        # try:
+        #     data['extension'] = data['object_key'][data['object_key'].index('.') + 1:]
+        # except:
+        #     data['extension'] = ''
+        data['extension'] = file_name[file_name.index('.')+1:]
         data['volume_name'] = secret_data_internal['volume_name']
+        
         data['root_handle'] = secret_data_internal['root_handle'].replace('.','_').lower()
         data['source_bucket'] = secret_data_internal['discovery_source_bucket']
         print("data['object_key']",data['object_key'])  
         obj1 = s3.get_object(Bucket=data['dest_bucket'], Key=data['object_key'])
         data['content'] = obj1['Body'].read().decode('utf-8')        
         if secret_data_internal['web_access_appliance_address']!='not_found':
-            data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['object_key']
+            data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+file_name
         else:
             data['access_url']=secret_data_internal['web_access_appliance_address']
         print('data',data)
