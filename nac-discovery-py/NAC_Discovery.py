@@ -75,7 +75,7 @@ def lambda_handler(event, context):
         obj1 = s3.get_object(Bucket=data['dest_bucket'], Key=data['object_key'])
         data['content'] = obj1['Body'].read().decode('utf-8')        
         if secret_data_internal['web_access_appliance_address']!='not_found':
-            data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+file_name
+            data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+file_name
         else:
             data['access_url']=secret_data_internal['web_access_appliance_address']
         print('data',data)
