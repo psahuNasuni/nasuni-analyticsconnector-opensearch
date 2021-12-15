@@ -80,13 +80,15 @@ try:
     stdout, stderr = process.communicate()
     json_data = json.loads(stdout.decode('utf-8'))
     # My Accelerate Test
-    for i in json_data['items']:
-        if i['volume_guid'] == vv_guid and i['browser_access_settings']['external_share_url'] == web_access_appliance_address:
-            print(i)
-            share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
-            share_url.write(i['browser_access_settings']['external_share_url'])
-        else:
-            share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
-            share_url.write('not_found')
+    share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
+    share_url.write(web_access_appliance_address)
+    # for i in json_data['items']:
+    #     if i['volume_guid'] == vv_guid and i['browser_access_settings']['external_share_url'] == web_access_appliance_address:
+    #         print(i)
+    #         share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
+    #         share_url.write(i['browser_access_settings']['external_share_url'])
+    #     else:
+    #         share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
+    #         share_url.write('not_found')
 except Exception as e:
     print('Runtime Errors', e)
