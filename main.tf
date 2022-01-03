@@ -24,37 +24,35 @@ locals {
     var.user_parameters,
     {
       ###################### Read input Parameters from TFVARS file #####################
-      SourceBucketAccessKeyID           = var.SourceBucketAccessKeyID != "" ? var.SourceBucketAccessKeyID : data.local_file.accZes.content
-      SourceBucketSecretAccessKey       = var.SourceBucketSecretAccessKey != "" ? var.SourceBucketSecretAccessKey : data.local_file.secRet.content
-      DestinationBucketAccessKeyID      = var.DestinationBucketAccessKeyID != "" ? var.DestinationBucketAccessKeyID : data.local_file.accZes.content
-      DestinationBucketSecretAccessKey  = var.DestinationBucketSecretAccessKey != "" ? var.DestinationBucketSecretAccessKey : data.local_file.secRet.content
+      SourceBucketAccessKeyID          = data.local_file.accZes.content
+      SourceBucketSecretAccessKey      = data.local_file.secRet.content
+      DestinationBucketAccessKeyID     = data.local_file.accZes.content
+      DestinationBucketSecretAccessKey = data.local_file.secRet.content
 
       ###################### Read input Parameters from Secret Manager #####################
-      ProductKey                        = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nac_product_key"]
-      VolumeKeyParameter                = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["volume_key"]
-      VolumeKeyPassphrase               = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["volume_key_passphrase"]
-      DestinationBucket                 = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["destination_bucket"]
- 
+      ProductKey          = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nac_product_key"]
+      VolumeKeyParameter  = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["volume_key"]
+      VolumeKeyPassphrase = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["volume_key_passphrase"]
+      DestinationBucket   = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["destination_bucket"]
+
       ###################### Read input Parameters from NMC API #####################
-      UniFSTOCHandle                    = data.local_file.bkt.content
-      SourceBucket                      = data.local_file.bkt.content
+      UniFSTOCHandle = data.local_file.toc.content
+      SourceBucket   = data.local_file.bkt.content
 
       # Read input Parameters from Parameter Store
       /* VolumeKeyPassphrase               = jsondecode(data.aws_ssm_parameter.volume_data.*.value)
       /* VolumeKeyPassphrase               = nonsensitive(jsondecode(jsonencode(data.aws_ssm_parameter.volume_data.value))) */
       ############# Hard coding Parameters ##########################################
-      StartingPoint                     = var.StartingPoint != "" ? var.StartingPoint : "/"
-      IncludeFilterPattern              = var.IncludeFilterPattern != "" ? var.IncludeFilterPattern : "*"
-      IncludeFilterType                 = var.IncludeFilterType != "" ? var.IncludeFilterType : "glob"
-      ExcludeFilterPattern              = var.ExcludeFilterPattern   != "" ? var.ExcludeFilterPattern : ""
-      ExcludeFilterType                 = var.ExcludeFilterType   != "" ? var.ExcludeFilterType : "glob"
-      MinFileSizeFilter                 = var.MinFileSizeFilter   != "" ? var.MinFileSizeFilter : "0b"
-      MaxFileSizeFilter                 = var.MaxFileSizeFilter   != "" ? var.MaxFileSizeFilter : "500gb"
-      PrevUniFSTOCHandle                = var.PrevUniFSTOCHandle   != "" ? var.PrevUniFSTOCHandle : ""
-      DestinationPrefix                 = var.DestinationPrefix != "" ? var.DestinationPrefix : "/NCT/NCE/${var.volume_name}/${data.local_file.toc.content}"
-      MaxInvocations                    = var.MaxInvocations != "" ? var.MaxInvocations : "900"
-    /* var.a != "" ? var.a : "default-a" */
-
+      StartingPoint        = "/"
+      IncludeFilterPattern = "*"
+      IncludeFilterType    = "glob"
+      ExcludeFilterPattern = ""
+      ExcludeFilterType    = "glob"
+      MinFileSizeFilter    = "0b"
+      MaxFileSizeFilter    = "500gb"
+      PrevUniFSTOCHandle   = ""
+      DestinationPrefix    = "/NCT/NCE/${var.volume_name}/${data.local_file.toc.content}"
+      MaxInvocations       = "900"
     },
   )
 }
