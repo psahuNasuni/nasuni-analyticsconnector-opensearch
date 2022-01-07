@@ -42,17 +42,17 @@ locals {
       # Read input Parameters from Parameter Store
       /* VolumeKeyPassphrase               = jsondecode(data.aws_ssm_parameter.volume_data.*.value)
       /* VolumeKeyPassphrase               = nonsensitive(jsondecode(jsonencode(data.aws_ssm_parameter.volume_data.value))) */
-      ############# Hard coding Parameters ##########################################
-      StartingPoint        = "/"
-      IncludeFilterPattern = "*"
-      IncludeFilterType    = "glob"
-      ExcludeFilterPattern = ""
-      ExcludeFilterType    = "glob"
-      MinFileSizeFilter    = "0b"
-      MaxFileSizeFilter    = "500gb"
-      PrevUniFSTOCHandle   = ""
-      DestinationPrefix    = "/NCT/NCE/${var.volume_name}/${data.local_file.toc.content}"
-      MaxInvocations       = "900"
+      ############# Hard coding Parameters ##########################################    
+      StartingPoint        = var.StartingPoint
+      IncludeFilterPattern = var.IncludeFilterPattern
+      IncludeFilterType    = var.IncludeFilterType
+      ExcludeFilterPattern = var.IncludeFilterPattern
+      ExcludeFilterType    = var.ExcludeFilterType
+      MinFileSizeFilter    = var.MinFileSizeFilter
+      MaxFileSizeFilter    = var.MaxFileSizeFilter
+      PrevUniFSTOCHandle   = var.PrevUniFSTOCHandle
+      DestinationPrefix    = "/NasuniLabs/${var.volume_name}/${data.local_file.toc.content}"
+      MaxInvocations       = var.MaxInvocations
     },
   )
 }
@@ -65,6 +65,7 @@ resource "aws_cloudformation_stack" "nac_stack" {
   name               = "nct-NCE-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
   tags               = module.this.tags
   template_body      = file("${path.cwd}/nac-cf.template.yaml")
+  /* template_url       = "https://s3.us-east-2.amazonaws.com/unifx-stack/unifx_s3_s3.yml" */
   parameters         = local.prams
   capabilities       = var.capabilities
   on_failure         = var.on_failure

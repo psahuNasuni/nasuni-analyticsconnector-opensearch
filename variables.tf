@@ -104,3 +104,86 @@ variable "external_share_url" {
   default = ""
 }
 #########################################
+variable "SourceBucketAccessKeyID" {
+  default = ""
+}
+
+variable "SourceBucketSecretAccessKey" {
+  default = ""
+}
+
+variable "DestinationBucketAccessKeyID" {
+  default = ""
+}
+
+variable "DestinationBucketSecretAccessKey" {
+  default = ""
+}
+
+variable "StartingPoint" {
+  default = "/"
+}
+
+variable "IncludeFilterPattern" { 
+  default  = "*"
+}
+
+variable "IncludeFilterType" { 
+  default = "glob"
+}
+
+variable "ExcludeFilterPattern" { 
+  default  = ""
+}
+
+variable "ExcludeFilterType" {  
+    default = "glob"
+}
+
+variable "MinFileSizeFilter" { 
+  default  = "0b"
+} 
+
+variable "MaxFileSizeFilter" { 
+  default = "500gb"
+} 
+
+variable "PrevUniFSTOCHandle" { 
+  default = ""
+} 
+
+variable "DestinationPrefix" { 
+  default  = ""
+}
+variable "MaxInvocations" {
+  default = "900"
+}
+
+variable "ProductKey" {
+  default  = ""
+}
+
+variable "DestinationBucket" {
+  default  = ""
+}
+
+variable "UniFSTOCHandle" {
+  default = ""
+}
+
+variable "SourceBucket" {
+  default = ""
+}
+/*
+StartingPoint        = "/"
+IncludeFilterPattern = "*"
+IncludeFilterType    = "glob"
+ExcludeFilterPattern = ""
+ExcludeFilterType    = "glob"
+MinFileSizeFilter    = "0b"
+MaxFileSizeFilter    = "500gb"
+PrevUniFSTOCHandle   = ""
+DestinationPrefix    = "/NCT/NCE/${var.volume_name}/${data.local_file.toc.content}"
+MaxInvocations       = "900"
+
+ */
