@@ -42,7 +42,7 @@ except Exception as e:
 try:
     #file_name, endpoint, username, password, volume_name, rid, web_access_appliance_address = sys.argv
     logging.info(sys.argv)
-    url = 'https://' + endpoint + '/auth/login/'
+    url = 'https://' + endpoint + '/api/v1.1/auth/login/'
     logging.info(url)
     values = {'username': username, 'password': password}
     data = urllib.parse.urlencode(values).encode("utf-8")
@@ -53,7 +53,7 @@ try:
     logging.info(result)
 
     cmd = 'curl -k -X GET -H \"Accept: application/json\" -H \"Authorization: Token ' + result[
-        'token'] + '\" \"https://' + endpoint + '/volumes/\"'
+        'token'] + '\" \"https://' + endpoint + '/api/v1.1/volumes/\"'
     logging.info(cmd)
     args = shlex.split(cmd)
     process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
