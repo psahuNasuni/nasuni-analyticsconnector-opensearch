@@ -73,7 +73,7 @@ try:
             v_guid.write(i['guid'])
             vv_guid = i['guid']
     cmd = 'curl -k -X GET -H \"Accept: application/json\" -H \"Authorization: Token ' + result[
-        'token'] + '\" \"https://' + endpoint + '/volumes/filers/shares/\"'
+        'token'] + '\" \"https://' + endpoint + '/api/v1.1/volumes/filers/shares/\"'
     logging.info(cmd)
     args = shlex.split(cmd)
     process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
