@@ -29,7 +29,8 @@ def lambda_handler(event, context):
     check=0
     aws_reg= event['Records'][0]['awsRegion']
     print(aws_reg)
-    secret_data_internal = get_secret('nct-nce-internal-'+context.invoked_function_arn[76:],aws_reg)
+    secret_data_internal = get_secret(
+        'NasuniLabs-internal-'+context.invoked_function_arn[76:], aws_reg)
     secret_nct_nce_admin = get_secret('nct/nce/os/admin',aws_reg) 
     
     role = secret_data_internal['discovery_lambda_role_arn']

@@ -1,7 +1,7 @@
 ########################################################
 ##  Developed By  :   Pradeepta Kumar Sahu
 ##  Project       :   Nasuni ElasticSearch Integration
-##  Organization  :   Nasuni - Community Tools   
+##  Organization  :   Nasuni Labs   
 #########################################################
 variable "template_url" {
   type        = string
@@ -85,7 +85,7 @@ variable "nac_destination_bucket" {
   description = "S3 bucket where NAC will be updating the files/data"
 }
 variable "runtime" {
-  default = "python3.6"
+  default = "python3.9"
 }
 
 variable "aws_profile" {
@@ -124,47 +124,47 @@ variable "StartingPoint" {
   default = "/"
 }
 
-variable "IncludeFilterPattern" { 
-  default  = "*"
+variable "IncludeFilterPattern" {
+  default = "*"
 }
 
-variable "IncludeFilterType" { 
+variable "IncludeFilterType" {
   default = "glob"
 }
 
-variable "ExcludeFilterPattern" { 
-  default  = ""
-}
-
-variable "ExcludeFilterType" {  
-    default = "glob"
-}
-
-variable "MinFileSizeFilter" { 
-  default  = "0b"
-} 
-
-variable "MaxFileSizeFilter" { 
-  default = "500gb"
-} 
-
-variable "PrevUniFSTOCHandle" { 
+variable "ExcludeFilterPattern" {
   default = ""
-} 
+}
 
-variable "DestinationPrefix" { 
-  default  = ""
+variable "ExcludeFilterType" {
+  default = "glob"
+}
+
+variable "MinFileSizeFilter" {
+  default = "0b"
+}
+
+variable "MaxFileSizeFilter" {
+  default = "500gb"
+}
+
+variable "PrevUniFSTOCHandle" {
+  default = ""
+}
+
+variable "DestinationPrefix" {
+  default = ""
 }
 variable "MaxInvocations" {
   default = "900"
 }
 
 variable "ProductKey" {
-  default  = ""
+  default = ""
 }
 
 variable "DestinationBucket" {
-  default  = ""
+  default = ""
 }
 
 variable "UniFSTOCHandle" {

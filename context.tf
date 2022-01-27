@@ -34,7 +34,7 @@ variable "context" {
     tags = {
       Application     = "Nasuni Analytics Connector with Elasticsearch"
       Developer       = "Nasuni"
-      PublicationType = "Nasuni Community Tool"
+      PublicationType = "Nasuni Labs"
       Version         = "V 0.1"
     }
     additional_tag_map  = {}
