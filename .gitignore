@@ -1,7 +1,7 @@
 *.tfvars
 cmd
 .aws
-#.gitignore
+.gitignore
 *.tfstate*
 .terraform
 *.txt

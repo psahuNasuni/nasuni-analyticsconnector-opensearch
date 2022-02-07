@@ -95,7 +95,7 @@ resource "aws_lambda_function" "lambda_function" {
   timeout          = 20
 
   tags = {
-    Name            = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
+    Name            = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-Lambda-${random_id.nac_unique_stack_id.hex}"
     Application     = "Nasuni Analytics Connector with Elasticsearch"
     Developer       = "Nasuni"
     PublicationType = "Nasuni Labs"
@@ -458,7 +458,7 @@ locals {
 
 resource "null_resource" "nmc_api_data" {
   provisioner "local-exec" {
-    command = "python fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address} && echo 'nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
+    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address} && echo 'nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
   }
   provisioner "local-exec" {
     when    = destroy
