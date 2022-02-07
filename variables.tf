@@ -174,16 +174,7 @@ variable "UniFSTOCHandle" {
 variable "SourceBucket" {
   default = ""
 }
-/*
-StartingPoint        = "/"
-IncludeFilterPattern = "*"
-IncludeFilterType    = "glob"
-ExcludeFilterPattern = ""
-ExcludeFilterType    = "glob"
-MinFileSizeFilter    = "0b"
-MaxFileSizeFilter    = "500gb"
-PrevUniFSTOCHandle   = ""
-DestinationPrefix    = "/NCT/NCE/${var.volume_name}/${data.local_file.toc.content}"
-MaxInvocations       = "900"
 
- */
+variable "github_organization" {
+  default = "NasuniLabs"
+}
