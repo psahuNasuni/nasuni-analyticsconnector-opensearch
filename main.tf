@@ -19,7 +19,7 @@ locals {
   lambda_code_extension                   = ".py"
   handler                                 = "lambda_handler"
   discovery_source_bucket                 = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["destination_bucket"]
-  resource_name_prefix                    = "nasuni-labs-lambda"
+  resource_name_prefix                    = "nasuni-labs"
   prams = merge(
     var.user_parameters,
     {
@@ -90,7 +90,7 @@ resource "aws_lambda_function" "lambda_function" {
   handler          = "${local.lambda_code_file_name_without_extension}.${local.handler}"
   runtime          = var.runtime
   filename         = "${local.lambda_code_file_name_without_extension}.zip"
-  function_name    = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
+  function_name    = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-Lambda-${random_id.nac_unique_stack_id.hex}"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 20
 
@@ -458,7 +458,7 @@ locals {
 
 resource "null_resource" "nmc_api_data" {
   provisioner "local-exec" {
-    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address} && echo 'nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
+    command = "python fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address} && echo 'nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
   }
   provisioner "local-exec" {
     when    = destroy
