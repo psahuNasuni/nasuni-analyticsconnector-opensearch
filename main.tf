@@ -19,7 +19,7 @@ locals {
   lambda_code_extension                   = ".py"
   handler                                 = "lambda_handler"
   discovery_source_bucket                 = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["destination_bucket"]
-  resource_name_prefix                    = "NasuniLabs-lambda"
+  resource_name_prefix                    = "nasuni-labs-lambda"
   prams = merge(
     var.user_parameters,
     {
@@ -51,7 +51,7 @@ locals {
       MinFileSizeFilter    = var.MinFileSizeFilter
       MaxFileSizeFilter    = var.MaxFileSizeFilter
       PrevUniFSTOCHandle   = var.PrevUniFSTOCHandle
-      DestinationPrefix    = "/NasuniLabs/${var.volume_name}/${data.local_file.toc.content}"
+      DestinationPrefix    = "/nasuni-labs/${var.volume_name}/${data.local_file.toc.content}"
       MaxInvocations       = var.MaxInvocations
     },
   )
@@ -62,7 +62,7 @@ resource "random_id" "nac_unique_stack_id" {
 resource "aws_cloudformation_stack" "nac_stack" {
   count = module.this.enabled ? 1 : 0
 
-  name          = "NasuniLabs-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
+  name          = "nasuni-labs-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
   tags          = module.this.tags
   template_body = file("${path.cwd}/nac-cf.template.yaml")
   /* template_url       = "https://s3.us-east-2.amazonaws.com/unifx-stack/unifx_s3_s3.yml" */
@@ -126,7 +126,7 @@ data "aws_secretsmanager_secret_version" "admin_secret" {
 }
 
 resource "aws_secretsmanager_secret" "internal_secret_u" {
-  name        = "NasuniLabs-internal-${random_id.nac_unique_stack_id.hex}"
+  name        = "nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}"
   description = "Nasuni Analytics Connector's version specific internal secret. This will be created as well as destroyed along with NAC."
 }
 resource "aws_secretsmanager_secret_version" "internal_secret_u" {
@@ -145,7 +145,7 @@ locals {
     root_handle               = data.local_file.toc.content
     discovery_source_bucket   = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["destination_bucket"]
     es_url                    = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.admin_secret.secret_string))["nac_es_url"]
-    nac_stack                 = "NasuniLabs-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
+    nac_stack                 = "nasuni-labs-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
     discovery_lambda_role_arn = aws_iam_role.lambda_exec_role.arn
     discovery_lambda_name     = aws_lambda_function.lambda_function.function_name
     aws_region                = var.region
@@ -153,7 +153,7 @@ locals {
     volume_name               = var.volume_name
     # web_access_appliance_address	= jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["web_access_appliance_address"]
     web_access_appliance_address = data.local_file.appliance_address.content
-    destination_prefix           = "/NasuniLabs/${var.volume_name}/${data.local_file.toc.content}"
+    destination_prefix           = "/nasuni-labs/${var.volume_name}/${data.local_file.toc.content}"
   }
 }
 
@@ -458,7 +458,7 @@ locals {
 
 resource "null_resource" "nmc_api_data" {
   provisioner "local-exec" {
-    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address} && echo 'NasuniLabs-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
+    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address} && echo 'nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
   }
   provisioner "local-exec" {
     when    = destroy
