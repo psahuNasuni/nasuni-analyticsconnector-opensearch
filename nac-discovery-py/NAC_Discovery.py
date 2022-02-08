@@ -20,7 +20,7 @@ cfn = boto3.resource('cloudformation')
 def lambda_handler(event, context):
     logging.info('lambda_handler starts...')
     print("Lambda function ARN:", context.invoked_function_arn)
-	context_arn=context.invoked_function_arn
+    context_arn=context.invoked_function_arn
     # u_id=context.invoked_function_arn
     print('***********************************************')
     s3 = boto3.client('s3')        
@@ -30,10 +30,8 @@ def lambda_handler(event, context):
     check=0
     aws_reg= event['Records'][0]['awsRegion']
     print(aws_reg)
-    #secret_data_internal = get_secret('nct-nce-internal-'+context.invoked_function_arn[76:],aws_reg)
-	secret_data_internal = get_secret(
+    secret_data_internal = get_secret(
         'NasuniLabs-internal-'+context_arn.split('-')[-1], aws_reg)
-    #secret_data_internal = get_secret('NasuniLabs-internal-'+context.invoked_function_arn[76:],aws_reg)
     secret_nct_nce_admin = get_secret('nct/nce/os/admin',aws_reg) 
     
     role = secret_data_internal['discovery_lambda_role_arn']
@@ -61,6 +59,7 @@ def lambda_handler(event, context):
         # data={}
         data['dest_bucket'] = record['s3']['bucket']['name']
         data['object_key'] = unquote_plus(record['s3']['object']['key'])
+        # print
         data['size'] = str(record['s3']['object'].get('size', -1))
         file_name=os.path.basename(data['object_key'])
         data['event_name'] = record['eventName']
@@ -76,6 +75,7 @@ def lambda_handler(event, context):
         data['root_handle'] = secret_data_internal['root_handle'].replace('.','_').lower()
         data['source_bucket'] = secret_data_internal['discovery_source_bucket']
         print("data['object_key']",data['object_key'])  
+        print("data['dest_bucket']",data['dest_bucket'])  
         obj1 = s3.get_object(Bucket=data['dest_bucket'], Key=data['object_key'])
         data['content'] = obj1['Body'].read().decode('utf-8')        
         if secret_data_internal['web_access_appliance_address']!='not_found':
@@ -129,8 +129,8 @@ def connect_es(es,index, data):
             for i in resp['hits']['hits']:
                 idx_content = i['_source'].get('content', 0)
                 idx_object_key = i['_source'].get('object_key', 0)
-                print('idx_content',idx_content)
-                print('idx_object_key',idx_object_key)
+                #print('idx_content',idx_content)
+                #print('idx_object_key',idx_object_key)
                 if idx_content == data['content'] and idx_object_key == data['object_key']:
                     flag = 1
                     print("Indexing is doing when the idx_content and idx_object_key has matched", resp)
