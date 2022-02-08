@@ -32,7 +32,7 @@ def lambda_handler(event, context):
     print(aws_reg)
     secret_data_internal = get_secret(
         'NasuniLabs-internal-'+context_arn.split('-')[-1], aws_reg)
-    secret_nct_nce_admin = get_secret('nct/nce/os/admin',aws_reg) 
+    secret_nct_nce_admin = get_secret('nasuni-labs-os-admin',aws_reg) 
     
     role = secret_data_internal['discovery_lambda_role_arn']
     role_data = '{ "backend_roles":["' + role + '"],"hosts": [],"users": ["automation"]}'
