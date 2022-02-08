@@ -21,10 +21,10 @@ def lambda_handler(event, context):
     logging.info('lambda_handler starts...')
     print("Lambda function ARN:", context.invoked_function_arn)
     context_arn=context.invoked_function_arn
-    # u_id=context.invoked_function_arn
+    
     print('***********************************************')
     s3 = boto3.client('s3')        
-    #Lambda function ARN: arn:aws:lambda:us-east-2:514960042727:function:nct-NCE-lambda-NAC_Discovery-b511bc3f12ba
+    
     data={}
     doc_list=[]
     check=0
