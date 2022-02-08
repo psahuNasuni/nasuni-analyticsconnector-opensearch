@@ -1,7 +1,7 @@
 ########################################################
 ##  Developed By  :   Pradeepta Kumar Sahu
 ##  Project       :   Nasuni ElasticSearch Integration
-##  Organization  :   Nasuni - Community Tools   
+##  Organization  :   Nasuni - Labss   
 #########################################################
 
 data "aws_s3_bucket" "discovery_source_bucket" {
@@ -19,7 +19,7 @@ locals {
   lambda_code_extension                   = ".py"
   handler                                 = "lambda_handler"
   discovery_source_bucket                 = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["destination_bucket"]
-  resource_name_prefix                    = "nct-NCE-lambda"
+  resource_name_prefix                    = "nasuni-labs"
   prams = merge(
     var.user_parameters,
     {
@@ -51,7 +51,7 @@ locals {
       MinFileSizeFilter    = var.MinFileSizeFilter
       MaxFileSizeFilter    = var.MaxFileSizeFilter
       PrevUniFSTOCHandle   = var.PrevUniFSTOCHandle
-      DestinationPrefix    = "/NasuniLabs/${var.volume_name}/${data.local_file.toc.content}"
+      DestinationPrefix    = "/nasuni-labs/${var.volume_name}/${data.local_file.toc.content}"
       MaxInvocations       = var.MaxInvocations
     },
   )
@@ -62,9 +62,9 @@ resource "random_id" "nac_unique_stack_id" {
 resource "aws_cloudformation_stack" "nac_stack" {
   count = module.this.enabled ? 1 : 0
 
-  name               = "nct-NCE-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
-  tags               = module.this.tags
-  template_body      = file("${path.cwd}/nac-cf.template.yaml")
+  name          = "nasuni-labs-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
+  tags          = module.this.tags
+  template_body = file("${path.cwd}/nac-cf.template.yaml")
   /* template_url       = "https://s3.us-east-2.amazonaws.com/unifx-stack/unifx_s3_s3.yml" */
   parameters         = local.prams
   capabilities       = var.capabilities
@@ -74,8 +74,8 @@ resource "aws_cloudformation_stack" "nac_stack" {
   depends_on = [data.local_file.accZes,
     data.local_file.secRet,
     aws_lambda_function.lambda_function,
-    aws_secretsmanager_secret_version.internal_secret_u 
-    ]
+    aws_secretsmanager_secret_version.internal_secret_u
+  ]
 }
 
 ################### START - NAC Discovery Lambda ####################################################
@@ -90,15 +90,15 @@ resource "aws_lambda_function" "lambda_function" {
   handler          = "${local.lambda_code_file_name_without_extension}.${local.handler}"
   runtime          = var.runtime
   filename         = "${local.lambda_code_file_name_without_extension}.zip"
-  function_name    = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
+  function_name    = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-Lambda-${random_id.nac_unique_stack_id.hex}"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 20
 
   tags = {
-    Name            = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
+    Name            = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-Lambda-${random_id.nac_unique_stack_id.hex}"
     Application     = "Nasuni Analytics Connector with Elasticsearch"
     Developer       = "Nasuni"
-    PublicationType = "Nasuni Community Tool"
+    PublicationType = "Nasuni Labs"
     Version         = "V 0.1"
   }
   depends_on = [
@@ -126,7 +126,7 @@ data "aws_secretsmanager_secret_version" "admin_secret" {
 }
 
 resource "aws_secretsmanager_secret" "internal_secret_u" {
-  name = "nct-nce-internal-${random_id.nac_unique_stack_id.hex}"
+  name        = "nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}"
   description = "Nasuni Analytics Connector's version specific internal secret. This will be created as well as destroyed along with NAC."
 }
 resource "aws_secretsmanager_secret_version" "internal_secret_u" {
@@ -136,7 +136,7 @@ resource "aws_secretsmanager_secret_version" "internal_secret_u" {
     aws_iam_role.lambda_exec_role,
     aws_lambda_function.lambda_function,
   ]
-} 
+}
 
 
 locals {
@@ -145,15 +145,15 @@ locals {
     root_handle               = data.local_file.toc.content
     discovery_source_bucket   = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["destination_bucket"]
     es_url                    = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.admin_secret.secret_string))["nac_es_url"]
-    nac_stack                 = "nct-NCE-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
+    nac_stack                 = "nasuni-labs-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
     discovery_lambda_role_arn = aws_iam_role.lambda_exec_role.arn
     discovery_lambda_name     = aws_lambda_function.lambda_function.function_name
     aws_region                = var.region
     user_secret_name          = var.user_secret
     volume_name               = var.volume_name
     # web_access_appliance_address	= jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["web_access_appliance_address"]
-    web_access_appliance_address  = data.local_file.appliance_address.content
-    destination_prefix        = "/NCT/NCE/${var.volume_name}/${data.local_file.toc.content}"
+    web_access_appliance_address = data.local_file.appliance_address.content
+    destination_prefix           = "/nasuni-labs/${var.volume_name}/${data.local_file.toc.content}"
   }
 }
 
@@ -182,7 +182,7 @@ EOF
     Name            = "${local.resource_name_prefix}-lambda_exec-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
     Application     = "Nasuni Analytics Connector with Elasticsearch"
     Developer       = "Nasuni"
-    PublicationType = "Nasuni Community Tool"
+    PublicationType = "Nasuni Labs"
     Version         = "V 0.1"
   }
 }
@@ -196,7 +196,7 @@ resource "aws_cloudwatch_log_group" "lambda_log_group" {
     Name            = "${local.resource_name_prefix}-lambda_log_group-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
     Application     = "Nasuni Analytics Connector with Elasticsearch"
     Developer       = "Nasuni"
-    PublicationType = "Nasuni Community Tool"
+    PublicationType = "Nasuni Labs"
     Version         = "V 0.1"
   }
 }
@@ -227,7 +227,7 @@ EOF
     Name            = "${local.resource_name_prefix}-lambda_logging_policy-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
     Application     = "Nasuni Analytics Connector with Elasticsearch"
     Developer       = "Nasuni"
-    PublicationType = "Nasuni Community Tool"
+    PublicationType = "Nasuni Labs"
     Version         = "V 0.1"
   }
 }
@@ -261,7 +261,7 @@ EOF
     Name            = "${local.resource_name_prefix}-s3_GetObject_access_policy-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
     Application     = "Nasuni Analytics Connector with Elasticsearch"
     Developer       = "Nasuni"
-    PublicationType = "Nasuni Community Tool"
+    PublicationType = "Nasuni Labs"
     Version         = "V 0.1"
   }
 
@@ -296,7 +296,7 @@ EOF
     Name            = "${local.resource_name_prefix}-ESHttpPost_access_policy-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
     Application     = "Nasuni Analytics Connector with Elasticsearch"
     Developer       = "Nasuni"
-    PublicationType = "Nasuni Community Tool"
+    PublicationType = "Nasuni Labs"
     Version         = "V 0.1"
   }
 }
@@ -341,7 +341,7 @@ EOF
     Name            = "${local.resource_name_prefix}-GetSecretValue_access_policy-${local.lambda_code_file_name_without_extension}-${random_id.nac_unique_stack_id.hex}"
     Application     = "Nasuni Analytics Connector with Elasticsearch"
     Developer       = "Nasuni"
-    PublicationType = "Nasuni Community Tool"
+    PublicationType = "Nasuni Labs"
     Version         = "V 0.1"
   }
 }
@@ -449,16 +449,16 @@ data "local_file" "accZes" {
 ############################## NMC API CALL ###############################
 
 locals {
-  nmc_api_endpoint = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nmc_api_endpoint"]
-  nmc_api_username = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nmc_api_username"]
-  nmc_api_password = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nmc_api_password"]
+  nmc_api_endpoint             = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nmc_api_endpoint"]
+  nmc_api_username             = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nmc_api_username"]
+  nmc_api_password             = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nmc_api_password"]
   web_access_appliance_address = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["web_access_appliance_address"]
-      
+
 }
 
 resource "null_resource" "nmc_api_data" {
   provisioner "local-exec" {
-    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address} && echo 'nct-nce-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
+    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address} && echo 'nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
   }
   provisioner "local-exec" {
     when    = destroy
@@ -512,8 +512,8 @@ output "appliance_address" {
 }
 
 resource "local_file" "Lambda_Name" {
-    content  = aws_lambda_function.lambda_function.function_name
-    filename = "Lambda_Name.txt"
+  content    = aws_lambda_function.lambda_function.function_name
+  filename   = "Lambda_Name.txt"
   depends_on = [aws_lambda_function.lambda_function]
 }
 ############################################################################

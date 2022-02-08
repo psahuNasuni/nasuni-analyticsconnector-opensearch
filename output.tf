@@ -1,7 +1,7 @@
 ########################################################
 ##  Developr      :   Pradeepta Kumar Sahu
 ##  Project       :   Nasuni ElasticSearch Integration
-##  Organization  :   Nasuni - Community Tools   
+##  Organization  :   Nasuni Labs   
 #########################################################
 output "name" {
   value       = join("", aws_cloudformation_stack.nac_stack.*.name)
