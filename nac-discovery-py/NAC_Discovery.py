@@ -1,4 +1,4 @@
-import json,os
+import json,os  
 import boto3
 from datetime import *
 import json, logging
@@ -20,29 +20,29 @@ cfn = boto3.resource('cloudformation')
 def lambda_handler(event, context):
     logging.info('lambda_handler starts...')
     print("Lambda function ARN:", context.invoked_function_arn)
+    runtime_region = os.environ['AWS_REGION'] 
     context_arn=context.invoked_function_arn
-    
+    u_id=context_arn.split('-')[-1]
+    print('u_id',u_id)
     print('***********************************************')
     s3 = boto3.client('s3')        
-    
     data={}
     doc_list=[]
     check=0
-    aws_reg= event['Records'][0]['awsRegion']
-    print(aws_reg)
     secret_data_internal = get_secret(
-        'NasuniLabs-internal-'+context_arn.split('-')[-1], aws_reg)
-    secret_nct_nce_admin = get_secret('nasuni-labs-os-admin',aws_reg) 
+        'nasuni-labs-internal-'+u_id, runtime_region)
+    secret_nct_nce_admin = get_secret('nasuni-labs-os-admin',runtime_region) 
     
     role = secret_data_internal['discovery_lambda_role_arn']
-    role_data = '{ "backend_roles":["' + role + '"],"hosts": [],"users": ["automation"]}'
+    username=secret_nct_nce_admin['nac_es_admin_user']
+    role_data = '{"backend_roles":["' +role + '"],"hosts": [],"users": ["'+username+'"]}'
     print('role_data',role_data)
     with open("/tmp/"+"/data.json", "w") as write_file:
         write_file.write(role_data)
         
     link=secret_nct_nce_admin['nac_kibana_url']
     link=link[:link.index('_')]
-    username=secret_nct_nce_admin['nac_es_admin_user']
+
     password=secret_nct_nce_admin['nac_es_admin_password']
     data_file_obj = '/tmp/data.json'
     merge_link = '\"https://'+link+'_opendistro/_security/api/rolesmapping/all_access\"'
@@ -56,19 +56,14 @@ def lambda_handler(event, context):
     
     for record in event['Records']:
         print(record)
-        # data={}
         data['dest_bucket'] = record['s3']['bucket']['name']
         data['object_key'] = unquote_plus(record['s3']['object']['key'])
-        # print
         data['size'] = str(record['s3']['object'].get('size', -1))
         file_name=os.path.basename(data['object_key'])
         data['event_name'] = record['eventName']
         data['event_time'] = record['eventTime']
         data['awsRegion'] = record['awsRegion']
-        # try:
-        #     data['extension'] = data['object_key'][data['object_key'].index('.') + 1:]
-        # except:
-        #     data['extension'] = ''
+
         data['extension'] = file_name[file_name.index('.')+1:]
         data['volume_name'] = secret_data_internal['volume_name']
         
@@ -85,8 +80,6 @@ def lambda_handler(event, context):
         print('data',data)
         print('secret_data_internal',secret_data_internal)
         es_obj = launch_es(secret_nct_nce_admin['nac_es_url'],data['awsRegion'])
-        # doc_list += [data]
-        # connect_es(es_obj,data['root_handle'], data)
         
         check=connect_es(es_obj,data['root_handle'], data) 
     #Deletion of folder from s3
@@ -102,9 +95,6 @@ def del_s3_folder(full_path,dest_bucket):
     print("Full Path:-",full_path)
     path=os.path.dirname(full_path)
     print("Folder Path:-",path)
-    # folder_path='s3://'+dest_bucket+'/'+path
-    # print("Folder Path:-",folder_path)
-    # #push=subprocess.run(['aws', 's3', 'rm', folder_path, '--recursive'])
     s3 = boto3.resource('s3') 
     bucket = s3.Bucket(dest_bucket)
     bucket.objects.filter(Prefix=path).delete()
@@ -129,14 +119,12 @@ def connect_es(es,index, data):
             for i in resp['hits']['hits']:
                 idx_content = i['_source'].get('content', 0)
                 idx_object_key = i['_source'].get('object_key', 0)
-                #print('idx_content',idx_content)
-                #print('idx_object_key',idx_object_key)
                 if idx_content == data['content'] and idx_object_key == data['object_key']:
                     flag = 1
                     print("Indexing is doing when the idx_content and idx_object_key has matched", resp)
                     es.index(index=i['_index'], doc_type="_doc", id=i['_id'], body=data)
                     break
-                    # print(es.get(index=i['_index'], doc_type="_doc", id=i['_id']))
+
         if flag == 0:
             doc_list = []
             doc_list += [data]
@@ -146,8 +134,6 @@ def connect_es(es,index, data):
             # print the response returned by Elasticsearch
             print("helpers.bulk() RESPONSE:", resp)
             print("helpers.bulk() RESPONSE:", json.dumps(resp, indent=4))
-            # pprint.pprint(resp)
-            # print(elem['index'])
         return 0
     except Exception as e:
         logging.error('ERROR: {0}'.format(str(e)))
@@ -186,8 +172,8 @@ def get_secret(secret_name,region_name):
         # Depending on whether the secret was a string or binary, only one of these fields will be populated
         if 'SecretString' in get_secret_value_response:
             secret = get_secret_value_response['SecretString']
-            #print('text_secret_data',secret)
+
         else:
             secret = base64.b64decode(get_secret_value_response['SecretBinary'])
-            #print('text_secret_data',secret)
+
     return json.loads(secret)
