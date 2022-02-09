@@ -20,6 +20,7 @@ locals {
   handler                                 = "lambda_handler"
   discovery_source_bucket                 = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["destination_bucket"]
   resource_name_prefix                    = "nasuni-labs"
+  template_url                            = "https://s3.us-east-2.amazonaws.com/unifx-stack/unifx_s3_s3.yml"
   prams = merge(
     var.user_parameters,
     {
@@ -64,7 +65,8 @@ resource "aws_cloudformation_stack" "nac_stack" {
 
   name          = "nasuni-labs-NasuniAnalyticsConnector-${random_id.nac_unique_stack_id.hex}"
   tags          = module.this.tags
-  template_body = file("${path.cwd}/nac-cf.template.yaml")
+  template_url  = local.template_url
+  # template_body = file("${path.cwd}/nac-cf.template.yaml")
   /* template_url       = "https://s3.us-east-2.amazonaws.com/unifx-stack/unifx_s3_s3.yml" */
   parameters         = local.prams
   capabilities       = var.capabilities
