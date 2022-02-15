@@ -46,7 +46,8 @@ locals {
       StartingPoint        = var.StartingPoint
       IncludeFilterPattern = var.IncludeFilterPattern
       IncludeFilterType    = var.IncludeFilterType
-      ExcludeFilterPattern = var.IncludeFilterPattern
+      ExcludeFilterPattern = var.ExcludeFilterPattern
+      # ExcludeFilterPattern = var.IncludeFilterPattern
       ExcludeFilterType    = var.ExcludeFilterType
       MinFileSizeFilter    = var.MinFileSizeFilter
       MaxFileSizeFilter    = var.MaxFileSizeFilter
