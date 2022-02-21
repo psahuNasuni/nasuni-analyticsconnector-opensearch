@@ -2,7 +2,7 @@ import json,os
 import boto3
 from datetime import *
 import json, logging
-import pprint
+import pprint,re
 from elasticsearch import Elasticsearch, helpers, RequestsHttpConnection
 import requests
 from requests_aws4auth import AWS4Auth
