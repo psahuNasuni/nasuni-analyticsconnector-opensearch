@@ -67,7 +67,8 @@ def lambda_handler(event, context):
         data['extension'] = file_name[file_name.index('.')+1:]
         data['volume_name'] = secret_data_internal['volume_name']
         
-        data['root_handle'] = secret_data_internal['root_handle'].replace('.','_').lower()
+        #data['root_handle'] = secret_data_internal['root_handle'].replace('.','_').lower()
+        data['root_handle'] = re.sub('[!@#$%^&*()+?=,<>/.]', '-', secret_data_internal['root_handle']).lower()
         data['source_bucket'] = secret_data_internal['discovery_source_bucket']
         print("data['object_key']",data['object_key'])  
         print("data['dest_bucket']",data['dest_bucket'])  
