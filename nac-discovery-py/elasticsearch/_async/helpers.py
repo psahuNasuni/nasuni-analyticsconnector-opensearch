@@ -15,28 +15,60 @@
 #  specific language governing permissions and limitations
 #  under the License.
 
-# Licensed to Elasticsearch B.V under one or more agreements.
-# Elasticsearch B.V licenses this file to you under the Apache 2.0 License.
-# See the LICENSE file in the project root for more information
-
 import asyncio
 import logging
+from typing import (
+    Any,
+    AsyncIterable,
+    AsyncIterator,
+    Callable,
+    Collection,
+    Dict,
+    Iterable,
+    List,
+    MutableMapping,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
-from ..compat import map
-from ..exceptions import TransportError
+from ..exceptions import ApiError, NotFoundError, TransportError
 from ..helpers.actions import (
+    _TYPE_BULK_ACTION,
+    _TYPE_BULK_ACTION_BODY,
+    _TYPE_BULK_ACTION_HEADER,
+    _TYPE_BULK_ACTION_HEADER_AND_BODY,
     _ActionChunker,
     _process_bulk_chunk_error,
     _process_bulk_chunk_success,
     expand_action,
 )
 from ..helpers.errors import ScanError
+from ..serializer import Serializer
 from .client import AsyncElasticsearch  # noqa
 
 logger = logging.getLogger("elasticsearch.helpers")
 
+T = TypeVar("T")
 
-async def _chunk_actions(actions, chunk_size, max_chunk_bytes, serializer):
+
+async def _chunk_actions(
+    actions: AsyncIterable[_TYPE_BULK_ACTION_HEADER_AND_BODY],
+    chunk_size: int,
+    max_chunk_bytes: int,
+    serializer: Serializer,
+) -> AsyncIterable[
+    Tuple[
+        List[
+            Union[
+                Tuple[_TYPE_BULK_ACTION_HEADER],
+                Tuple[_TYPE_BULK_ACTION_HEADER, _TYPE_BULK_ACTION_BODY],
+            ]
+        ],
+        List[bytes],
+    ]
+]:
     """
     Split actions into chunks by number or size, serialize them into strings in
     the process.
@@ -54,50 +86,67 @@ async def _chunk_actions(actions, chunk_size, max_chunk_bytes, serializer):
 
 
 async def _process_bulk_chunk(
-    client,
-    bulk_actions,
-    bulk_data,
-    raise_on_exception=True,
-    raise_on_error=True,
-    *args,
-    **kwargs
-):
+    client: AsyncElasticsearch,
+    bulk_actions: List[bytes],
+    bulk_data: List[
+        Union[
+            Tuple[_TYPE_BULK_ACTION_HEADER],
+            Tuple[_TYPE_BULK_ACTION_HEADER, _TYPE_BULK_ACTION_BODY],
+        ]
+    ],
+    raise_on_exception: bool = True,
+    raise_on_error: bool = True,
+    ignore_status: Union[int, Collection[int]] = (),
+    *args: Any,
+    **kwargs: Any,
+) -> AsyncIterable[Tuple[bool, Dict[str, Any]]]:
     """
     Send a bulk request to elasticsearch and process the output.
     """
+    if isinstance(ignore_status, int):
+        ignore_status = (ignore_status,)
+
     try:
         # send the actual request
-        resp = await client.bulk("\n".join(bulk_actions) + "\n", *args, **kwargs)
-    except TransportError as e:
+        resp = await client.bulk(*args, operations=bulk_actions, **kwargs)  # type: ignore[arg-type]
+    except ApiError as e:
         gen = _process_bulk_chunk_error(
             error=e,
             bulk_data=bulk_data,
+            ignore_status=ignore_status,
             raise_on_exception=raise_on_exception,
             raise_on_error=raise_on_error,
         )
     else:
         gen = _process_bulk_chunk_success(
-            resp=resp, bulk_data=bulk_data, raise_on_error=raise_on_error
+            resp=resp.body,
+            bulk_data=bulk_data,
+            ignore_status=ignore_status,
+            raise_on_error=raise_on_error,
         )
     for item in gen:
         yield item
 
 
-def aiter(x):
+def aiter(x: Union[Iterable[T], AsyncIterable[T]]) -> AsyncIterator[T]:
     """Turns an async iterable or iterable into an async iterator"""
     if hasattr(x, "__anext__"):
-        return x
+        return x  # type: ignore[return-value]
     elif hasattr(x, "__aiter__"):
-        return x.__aiter__()
+        return x.__aiter__()  # type: ignore[union-attr]
 
-    async def f():
-        for item in x:
+    async def f() -> AsyncIterable[T]:
+        nonlocal x
+        ix: Iterable[T] = x  # type: ignore[assignment]
+        for item in ix:
             yield item
 
     return f().__aiter__()
 
 
-async def azip(*iterables):
+async def azip(
+    *iterables: Union[Iterable[T], AsyncIterable[T]]
+) -> AsyncIterable[Tuple[T, ...]]:
     """Zips async iterables and iterables into an async iterator
     with the same behavior as zip()
     """
@@ -110,20 +159,23 @@ async def azip(*iterables):
 
 
 async def async_streaming_bulk(
-    client,
-    actions,
-    chunk_size=500,
-    max_chunk_bytes=100 * 1024 * 1024,
-    raise_on_error=True,
-    expand_action_callback=expand_action,
-    raise_on_exception=True,
-    max_retries=0,
-    initial_backoff=2,
-    max_backoff=600,
-    yield_ok=True,
-    *args,
-    **kwargs
-):
+    client: AsyncElasticsearch,
+    actions: Union[Iterable[_TYPE_BULK_ACTION], AsyncIterable[_TYPE_BULK_ACTION]],
+    chunk_size: int = 500,
+    max_chunk_bytes: int = 100 * 1024 * 1024,
+    raise_on_error: bool = True,
+    expand_action_callback: Callable[
+        [_TYPE_BULK_ACTION], _TYPE_BULK_ACTION_HEADER_AND_BODY
+    ] = expand_action,
+    raise_on_exception: bool = True,
+    max_retries: int = 0,
+    initial_backoff: float = 2,
+    max_backoff: float = 600,
+    yield_ok: bool = True,
+    ignore_status: Union[int, Collection[int]] = (),
+    *args: Any,
+    **kwargs: Any,
+) -> AsyncIterable[Tuple[bool, Dict[str, Any]]]:
 
     """
     Streaming bulk consumes actions from the iterable passed in and yields
@@ -156,25 +208,50 @@ async def async_streaming_bulk(
         2**retry_number``
     :arg max_backoff: maximum number of seconds a retry will wait
     :arg yield_ok: if set to False will skip successful documents in the output
+    :arg ignore_status: list of HTTP status code that you want to ignore
     """
 
-    async def map_actions():
+    client = client.options()
+    client._client_meta = (("h", "bp"),)
+
+    async def map_actions() -> AsyncIterable[_TYPE_BULK_ACTION_HEADER_AND_BODY]:
         async for item in aiter(actions):
             yield expand_action_callback(item)
 
+    serializer = client.transport.serializers.get_serializer("application/json")
+
+    bulk_data: List[
+        Union[
+            Tuple[_TYPE_BULK_ACTION_HEADER],
+            Tuple[_TYPE_BULK_ACTION_HEADER, _TYPE_BULK_ACTION_BODY],
+        ]
+    ]
+    bulk_actions: List[bytes]
     async for bulk_data, bulk_actions in _chunk_actions(
-        map_actions(), chunk_size, max_chunk_bytes, client.transport.serializer
+        map_actions(), chunk_size, max_chunk_bytes, serializer
     ):
 
         for attempt in range(max_retries + 1):
-            to_retry, to_retry_data = [], []
+            to_retry: List[bytes] = []
+            to_retry_data: List[
+                Union[
+                    Tuple[_TYPE_BULK_ACTION_HEADER],
+                    Tuple[_TYPE_BULK_ACTION_HEADER, _TYPE_BULK_ACTION_BODY],
+                ]
+            ] = []
             if attempt:
                 await asyncio.sleep(
                     min(max_backoff, initial_backoff * 2 ** (attempt - 1))
                 )
 
             try:
-                async for data, (ok, info) in azip(
+                data: Union[
+                    Tuple[_TYPE_BULK_ACTION_HEADER],
+                    Tuple[_TYPE_BULK_ACTION_HEADER, _TYPE_BULK_ACTION_BODY],
+                ]
+                ok: bool
+                info: Dict[str, Any]
+                async for data, (ok, info) in azip(  # type: ignore
                     bulk_data,
                     _process_bulk_chunk(
                         client,
@@ -182,8 +259,9 @@ async def async_streaming_bulk(
                         bulk_data,
                         raise_on_exception,
                         raise_on_error,
+                        ignore_status,
                         *args,
-                        **kwargs
+                        **kwargs,
                     ),
                 ):
 
@@ -198,16 +276,14 @@ async def async_streaming_bulk(
                         ):
                             # _process_bulk_chunk expects strings so we need to
                             # re-serialize the data
-                            to_retry.extend(
-                                map(client.transport.serializer.dumps, data)
-                            )
+                            to_retry.extend(map(serializer.dumps, data))
                             to_retry_data.append(data)
                         else:
                             yield ok, {action: info}
                     elif yield_ok:
                         yield ok, info
 
-            except TransportError as e:
+            except ApiError as e:
                 # suppress 429 errors since we will retry them
                 if attempt == max_retries or e.status_code != 429:
                     raise
@@ -218,7 +294,14 @@ async def async_streaming_bulk(
                 bulk_actions, bulk_data = to_retry, to_retry_data
 
 
-async def async_bulk(client, actions, stats_only=False, *args, **kwargs):
+async def async_bulk(
+    client: AsyncElasticsearch,
+    actions: Union[Iterable[_TYPE_BULK_ACTION], AsyncIterable[_TYPE_BULK_ACTION]],
+    stats_only: bool = False,
+    ignore_status: Union[int, Collection[int]] = (),
+    *args: Any,
+    **kwargs: Any,
+) -> Tuple[int, Union[int, List[Any]]]:
     """
     Helper for the :meth:`~elasticsearch.AsyncElasticsearch.bulk` api that provides
     a more human friendly interface - it consumes an iterator of actions and
@@ -240,6 +323,7 @@ async def async_bulk(client, actions, stats_only=False, *args, **kwargs):
     :arg actions: iterator containing the actions
     :arg stats_only: if `True` only report number of successful/failed
         operations instead of just number of successful and a list of error responses
+    :arg ignore_status: list of HTTP status code that you want to ignore
 
     Any additional keyword arguments will be passed to
     :func:`~elasticsearch.helpers.async_streaming_bulk` which is used to execute
@@ -253,7 +337,9 @@ async def async_bulk(client, actions, stats_only=False, *args, **kwargs):
 
     # make streaming_bulk yield successful results so we can count them
     kwargs["yield_ok"] = True
-    async for ok, item in async_streaming_bulk(client, actions, *args, **kwargs):
+    async for ok, item in async_streaming_bulk(
+        client, actions, ignore_status=ignore_status, *args, **kwargs  # type: ignore[misc]
+    ):
         # go through request-response pairs and detect failures
         if not ok:
             if not stats_only:
@@ -266,17 +352,17 @@ async def async_bulk(client, actions, stats_only=False, *args, **kwargs):
 
 
 async def async_scan(
-    client,
-    query=None,
-    scroll="5m",
-    raise_on_error=True,
-    preserve_order=False,
-    size=1000,
-    request_timeout=None,
-    clear_scroll=True,
-    scroll_kwargs=None,
-    **kwargs
-):
+    client: AsyncElasticsearch,
+    query: Optional[Any] = None,
+    scroll: str = "5m",
+    raise_on_error: bool = True,
+    preserve_order: bool = False,
+    size: int = 1000,
+    request_timeout: Optional[float] = None,
+    clear_scroll: bool = True,
+    scroll_kwargs: Optional[MutableMapping[str, Any]] = None,
+    **kwargs: Any,
+) -> AsyncIterable[Dict[str, Any]]:
     """
     Simple abstraction on top of the
     :meth:`~elasticsearch.AsyncElasticsearch.scroll` api - a simple iterator that
@@ -307,14 +393,15 @@ async def async_scan(
         :meth:`~elasticsearch.AsyncElasticsearch.scroll`
 
     Any additional keyword arguments will be passed to the initial
-    :meth:`~elasticsearch.AsyncElasticsearch.search` call::
+    :meth:`~elasticsearch.AsyncElasticsearch.search` call:
 
-        async_scan(es,
+    .. code-block:: python
+
+        async_scan(
+            es,
             query={"query": {"match": {"title": "python"}}},
-            index="orders-*",
-            doc_type="books"
+            index="orders-*"
         )
-
     """
     scroll_kwargs = scroll_kwargs or {}
 
@@ -322,11 +409,53 @@ async def async_scan(
         query = query.copy() if query else {}
         query["sort"] = "_doc"
 
-    # initial search
-    resp = await client.search(
-        body=query, scroll=scroll, size=size, request_timeout=request_timeout, **kwargs
+    def pop_transport_kwargs(kw: MutableMapping[str, Any]) -> MutableMapping[str, Any]:
+        # Grab options that should be propagated to every
+        # API call within this helper instead of just 'search()'
+        transport_kwargs = {}
+        for key in ("headers", "api_key", "http_auth", "basic_auth", "bearer_auth"):
+            try:
+                value = kw.pop(key)
+                if key == "http_auth":
+                    key = "basic_auth"
+                transport_kwargs[key] = value
+            except KeyError:
+                pass
+        return transport_kwargs
+
+    client = client.options(
+        request_timeout=request_timeout, **pop_transport_kwargs(kwargs)
     )
-    scroll_id = resp.get("_scroll_id")
+    client._client_meta = (("h", "s"),)
+
+    # Setting query={"from": ...} would make 'from' be used
+    # as a keyword argument instead of 'from_'. We handle that here.
+    def normalize_from_keyword(kw: MutableMapping[str, Any]) -> None:
+        if "from" in kw:
+            kw["from_"] = kw.pop("from")
+
+    normalize_from_keyword(kwargs)
+    try:
+        search_kwargs = query.copy() if query else {}
+        normalize_from_keyword(search_kwargs)
+        search_kwargs.update(kwargs)
+        search_kwargs["scroll"] = scroll
+        search_kwargs["size"] = size
+        resp = await client.search(**search_kwargs)
+
+    # Try the old deprecated way if we fail immediately on parameters.
+    except TypeError:
+        search_kwargs = kwargs.copy()
+        search_kwargs["scroll"] = scroll
+        search_kwargs["size"] = size
+        resp = await client.search(body=query, **search_kwargs)  # type: ignore[call-arg]
+
+    scroll_id: Optional[str] = resp.get("_scroll_id")
+    scroll_transport_kwargs = pop_transport_kwargs(scroll_kwargs)
+    if scroll_transport_kwargs:
+        scroll_client = client.options(**scroll_transport_kwargs)
+    else:
+        scroll_client = client
 
     try:
         while scroll_id and resp["hits"]["hits"]:
@@ -334,9 +463,10 @@ async def async_scan(
                 yield hit
 
             # Default to 0 if the value isn't included in the response
-            shards_successful = resp["_shards"].get("successful", 0)
-            shards_skipped = resp["_shards"].get("skipped", 0)
-            shards_total = resp["_shards"].get("total", 0)
+            shards_info: Dict[str, int] = resp["_shards"]
+            shards_successful = shards_info.get("successful", 0)
+            shards_skipped = shards_info.get("skipped", 0)
+            shards_total = shards_info.get("total", 0)
 
             # check if we have any errors
             if (shards_successful + shards_skipped) < shards_total:
@@ -357,31 +487,28 @@ async def async_scan(
                             shards_total,
                         ),
                     )
-            resp = await client.scroll(
-                body={"scroll_id": scroll_id, "scroll": scroll}, **scroll_kwargs
+            resp = await scroll_client.scroll(
+                scroll_id=scroll_id, scroll=scroll, **scroll_kwargs
             )
             scroll_id = resp.get("_scroll_id")
 
     finally:
         if scroll_id and clear_scroll:
-            await client.clear_scroll(
-                body={"scroll_id": [scroll_id]},
-                ignore=(404,),
-                params={"__elastic_client_meta": (("h", "s"),)},
-            )
+            await client.options(ignore_status=404).clear_scroll(scroll_id=scroll_id)
 
 
 async def async_reindex(
-    client,
-    source_index,
-    target_index,
-    query=None,
-    target_client=None,
-    chunk_size=500,
-    scroll="5m",
-    scan_kwargs={},
-    bulk_kwargs={},
-):
+    client: AsyncElasticsearch,
+    source_index: Union[str, Collection[str]],
+    target_index: str,
+    query: Any = None,
+    target_client: Optional[AsyncElasticsearch] = None,
+    chunk_size: int = 500,
+    scroll: str = "5m",
+    op_type: Optional[str] = None,
+    scan_kwargs: MutableMapping[str, Any] = {},
+    bulk_kwargs: MutableMapping[str, Any] = {},
+) -> Tuple[int, Union[int, List[Any]]]:
 
     """
     Reindex all documents from one index that satisfy a given query
@@ -408,6 +535,9 @@ async def async_reindex(
     :arg chunk_size: number of docs in one chunk sent to es (default: 500)
     :arg scroll: Specify how long a consistent view of the index should be
         maintained for scrolled search
+    :arg op_type: Explicit operation type. Defaults to '_index'. Data streams must
+        be set to 'create'. If not specified, will auto-detect if target_index is a
+        data stream.
     :arg scan_kwargs: additional kwargs to be passed to
         :func:`~elasticsearch.helpers.async_scan`
     :arg bulk_kwargs: additional kwargs to be passed to
@@ -418,18 +548,45 @@ async def async_reindex(
         client, query=query, index=source_index, scroll=scroll, **scan_kwargs
     )
 
-    async def _change_doc_index(hits, index):
+    async def _change_doc_index(
+        hits: AsyncIterable[Dict[str, Any]],
+        index: str,
+        op_type: Optional[str],
+    ) -> AsyncIterable[Dict[str, Any]]:
         async for h in hits:
             h["_index"] = index
+            if op_type is not None:
+                h["_op_type"] = op_type
             if "fields" in h:
                 h.update(h.pop("fields"))
             yield h
 
     kwargs = {"stats_only": True}
     kwargs.update(bulk_kwargs)
+
+    is_data_stream = False
+    try:
+        # Verify if the target_index is data stream or index
+        data_streams = await target_client.indices.get_data_stream(
+            name=target_index, expand_wildcards="all"
+        )
+        is_data_stream = any(
+            data_stream["name"] == target_index
+            for data_stream in data_streams["data_streams"]
+        )
+    except (TransportError, KeyError, NotFoundError):
+        # If its not data stream, might be index
+        pass
+
+    if is_data_stream:
+        if op_type not in (None, "create"):
+            raise ValueError("Data streams must have 'op_type' set to 'create'")
+        else:
+            op_type = "create"
+
     return await async_bulk(
         target_client,
-        _change_doc_index(docs, target_index),
+        _change_doc_index(docs, target_index, op_type),
         chunk_size=chunk_size,
-        **kwargs
+        **kwargs,
     )

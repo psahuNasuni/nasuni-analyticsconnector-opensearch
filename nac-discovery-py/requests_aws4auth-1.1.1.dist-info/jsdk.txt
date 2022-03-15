@@ -1,3 +1,0 @@
-The elasticsearch project
-Adding something somethign
-Just add more fields into ES domain

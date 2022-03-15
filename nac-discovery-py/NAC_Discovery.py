@@ -2,8 +2,9 @@ import json,os
 import boto3
 from datetime import *
 import json, logging
-import pprint
-from elasticsearch import Elasticsearch, helpers, RequestsHttpConnection
+import pprint,re
+from elasticsearch import Elasticsearch, helpers
+from opensearchpy import OpenSearch,helpers, RequestsHttpConnection
 import requests
 from requests_aws4auth import AWS4Auth
 import urllib.parse
@@ -12,6 +13,15 @@ from datetime import *
 import shlex,subprocess
 from urllib.parse import unquote_plus
 import elasticsearch
+# import PyPDF2
+from io import BytesIO
+import io  
+from pptx import Presentation
+import fitz
+from requests.auth import HTTPBasicAuth
+import docx2txt
+from docx import Document
+import pandas as pd
 
 
 logging.getLogger().setLevel(logging.INFO)
@@ -46,10 +56,11 @@ def lambda_handler(event, context):
     password=secret_nct_nce_admin['nac_es_admin_password']
     data_file_obj = '/tmp/data.json'
     merge_link = '\"https://'+link+'_opendistro/_security/api/rolesmapping/all_access\"'
-    cmd = 'curl -X PUT -u \"'+username+':'+password+'\" -H "Content-Type:application/json" ' + merge_link + ' -d \"@/tmp/data.json\"'
-    print(cmd)
-    status, output = subprocess.getstatusoutput(cmd)
-    print(output)
+    url = 'https://' + link + '_opendistro/_security/api/rolesmapping/all_access/'
+
+    headers = {'content-type': 'application/json'}
+    response = requests.put(url, auth=HTTPBasicAuth(username, password), headers=headers, data=role_data)
+    print(response.text)
     
     #Deletion of folder from s3
     
@@ -67,12 +78,55 @@ def lambda_handler(event, context):
         data['extension'] = file_name[file_name.index('.')+1:]
         data['volume_name'] = secret_data_internal['volume_name']
         
-        data['root_handle'] = secret_data_internal['root_handle'].replace('.','_').lower()
+        #data['root_handle'] = secret_data_internal['root_handle'].replace('.','_').lower()
+        data['root_handle'] = re.sub('[!@#$%^&*()+?=,<>/.]', '-', secret_data_internal['root_handle']).lower()
         data['source_bucket'] = secret_data_internal['discovery_source_bucket']
         print("data['object_key']",data['object_key'])  
         print("data['dest_bucket']",data['dest_bucket'])  
         obj1 = s3.get_object(Bucket=data['dest_bucket'], Key=data['object_key'])
-        data['content'] = obj1['Body'].read().decode('utf-8')        
+        if data['extension'] in ['csv','txt']:
+            data['content'] = obj1['Body'].read().decode('utf-8')
+        elif data['extension'] == 'pdf':
+            file_content = obj1['Body'].read()
+            text = ""
+            with fitz.open(stream=file_content, filetype="pdf") as doc:
+                
+                # iterating through pdf file pages
+                for page in doc:
+                    # fetching & appending text to text variable of each page
+                    text += page.getText()
+
+            print('pdf data priting',text)
+            data['content'] = text
+        elif data['extension'] in ['docx','doc']:
+           fs = obj1['Body'].read()
+           sentence = str(parseDocx(fs))
+           print('docx data priting',sentence)
+           data['content'] = sentence
+        elif data['extension'] in ['xlsx','xls']:
+            file_content = obj1['Body'].read()
+            read_excel_data = io.BytesIO(file_content)
+            df = pd.read_excel(read_excel_data) 
+            df = df.to_string() 
+            print('xlsx data priting',df)
+            data['content'] = df 
+        elif data['extension'] == 'pptx':
+            print('data[extension] elif',data['extension'])
+            pptx_content = obj1['Body'].read()
+            ppt = Presentation(io.BytesIO(pptx_content))
+            pptx_data=''
+            for slide in ppt.slides:
+                for shape in slide.shapes:
+                    if not shape.has_text_frame:
+                        continue
+                    for paragraph in shape.text_frame.paragraphs:
+                        for run in paragraph.runs:
+                            pptx_data+=run.text
+            print(pptx_data)
+            data['content'] = pptx_data
+            
+            
+
         if secret_data_internal['web_access_appliance_address']!='not_found':
             data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+file_name
         else:
@@ -90,6 +144,14 @@ def lambda_handler(event, context):
         print('Not deleting the s3 bucket folder all data not got loaded into ES.') 
 
     logging.info('lambda_handler ends...')
+def parseDocx(data):
+    data = io.BytesIO(data)
+    document = Document(docx = data)
+    content = ''
+    for para in document.paragraphs:
+        data = para.text
+        content+= data
+    return content
 
 def del_s3_folder(full_path,dest_bucket):
     print("Full Path:-",full_path)
@@ -105,8 +167,10 @@ def launch_es(es_url,region):
     service = 'es'
     credentials = boto3.Session().get_credentials()
     awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, service, session_token=credentials.token)
-    es = Elasticsearch(hosts=[{'host': es_url, 'port': 443}], http_auth=awsauth, use_ssl=True, verify_certs=True,
-                  connection_class=RequestsHttpConnection)
+    # es = Elasticsearch(hosts=[{'host': es_url, 'port': 443}], http_auth=awsauth, use_ssl=True, verify_certs=True)
+    # es = Elasticsearch(hosts=[{'host': es_url, 'port': 443}], http_auth=awsauth, verify_certs=True)
+    es = OpenSearch(hosts=[{'host': es_url, 'port': 443}], http_auth=awsauth, use_ssl=True, verify_certs=True,connection_class = RequestsHttpConnection)
+    
     return es
     
 def connect_es(es,index, data):
