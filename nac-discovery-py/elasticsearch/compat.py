@@ -15,65 +15,38 @@
 #  specific language governing permissions and limitations
 #  under the License.
 
-import inspect
 import sys
-from pathlib import Path
-from typing import Tuple, Type, Union
 
-string_types: Tuple[Type[str], Type[bytes]] = (str, bytes)
+PY2 = sys.version_info[0] == 2
 
+if PY2:
+    string_types = (basestring,)  # noqa: F821
+    from itertools import imap as map
+    from urllib import quote, quote_plus, unquote, urlencode
 
-def to_str(x: Union[str, bytes], encoding: str = "ascii") -> str:
-    if not isinstance(x, str):
-        return x.decode(encoding)
-    return x
+    from Queue import Queue
+    from urlparse import urlparse
+else:
+    string_types = str, bytes
+    from urllib.parse import quote, quote_plus, unquote, urlencode, urlparse
 
+    map = map
+    from queue import Queue
 
-def to_bytes(x: Union[str, bytes], encoding: str = "ascii") -> bytes:
-    if not isinstance(x, bytes):
-        return x.encode(encoding)
-    return x
-
-
-def warn_stacklevel() -> int:
-    """Dynamically determine warning stacklevel for warnings based on the call stack"""
-    try:
-        # Grab the root module from the current module '__name__'
-        module_name = __name__.partition(".")[0]
-        module_path = Path(sys.modules[module_name].__file__)  # type: ignore[arg-type]
-
-        # If the module is a folder we're looking at
-        # subdirectories, otherwise we're looking for
-        # an exact match.
-        module_is_folder = module_path.name == "__init__.py"
-        if module_is_folder:
-            module_path = module_path.parent
-
-        # Look through frames until we find a file that
-        # isn't a part of our module, then return that stacklevel.
-        for level, frame in enumerate(inspect.stack()):
-            # Garbage collecting frames
-            frame_filename = Path(frame.filename)
-            del frame
-
-            if (
-                # If the module is a folder we look at subdirectory
-                module_is_folder
-                and module_path not in frame_filename.parents
-            ) or (
-                # Otherwise we're looking for an exact match.
-                not module_is_folder
-                and module_path != frame_filename
-            ):
-                return level
-    except KeyError:
-        pass
-    return 0
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 
 __all__ = [
     "string_types",
-    "to_str",
-    "to_bytes",
-    "warn_stacklevel",
+    "quote_plus",
+    "quote",
+    "urlencode",
+    "unquote",
+    "urlparse",
+    "map",
+    "Queue",
+    "Mapping",
 ]

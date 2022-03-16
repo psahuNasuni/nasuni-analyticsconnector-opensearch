@@ -15,282 +15,104 @@
 #  specific language governing permissions and limitations
 #  under the License.
 
-import typing as t
-
-from elastic_transport import ObjectApiResponse
-
-from ._base import NamespacedClient
-from .utils import _rewrite_parameters
+from .utils import NamespacedClient, query_params
 
 
 class LicenseClient(NamespacedClient):
-    @_rewrite_parameters()
-    async def delete(
-        self,
-        *,
-        error_trace: t.Optional[bool] = None,
-        filter_path: t.Optional[
-            t.Union[str, t.Union[t.List[str], t.Tuple[str, ...]]]
-        ] = None,
-        human: t.Optional[bool] = None,
-        pretty: t.Optional[bool] = None,
-    ) -> ObjectApiResponse[t.Any]:
+    @query_params()
+    async def delete(self, params=None, headers=None):
         """
         Deletes licensing information for the cluster
 
-        `<https://www.elastic.co/guide/en/elasticsearch/reference/master/delete-license.html>`_
+        `<https://www.elastic.co/guide/en/elasticsearch/reference/7.12/delete-license.html>`_
         """
-        __path = "/_license"
-        __query: t.Dict[str, t.Any] = {}
-        if error_trace is not None:
-            __query["error_trace"] = error_trace
-        if filter_path is not None:
-            __query["filter_path"] = filter_path
-        if human is not None:
-            __query["human"] = human
-        if pretty is not None:
-            __query["pretty"] = pretty
-        __headers = {"accept": "application/json"}
-        return await self.perform_request(  # type: ignore[return-value]
-            "DELETE", __path, params=__query, headers=__headers
+        return await self.transport.perform_request(
+            "DELETE", "/_license", params=params, headers=headers
         )
 
-    @_rewrite_parameters()
-    async def get(
-        self,
-        *,
-        accept_enterprise: t.Optional[bool] = None,
-        error_trace: t.Optional[bool] = None,
-        filter_path: t.Optional[
-            t.Union[str, t.Union[t.List[str], t.Tuple[str, ...]]]
-        ] = None,
-        human: t.Optional[bool] = None,
-        local: t.Optional[bool] = None,
-        pretty: t.Optional[bool] = None,
-    ) -> ObjectApiResponse[t.Any]:
+    @query_params("accept_enterprise", "local")
+    async def get(self, params=None, headers=None):
         """
         Retrieves licensing information for the cluster
 
-        `<https://www.elastic.co/guide/en/elasticsearch/reference/master/get-license.html>`_
+        `<https://www.elastic.co/guide/en/elasticsearch/reference/7.12/get-license.html>`_
 
-        :param accept_enterprise: If `true`, this parameter returns enterprise for Enterprise
-            license types. If `false`, this parameter returns platinum for both platinum
-            and enterprise license types. This behavior is maintained for backwards compatibility.
-            This parameter is deprecated and will always be set to true in 8.x.
-        :param local: Specifies whether to retrieve local information. The default value
-            is `false`, which means the information is retrieved from the master node.
+        :arg accept_enterprise: If the active license is an enterprise
+            license, return type as 'enterprise' (default: false)
+        :arg local: Return local information, do not retrieve the state
+            from master node (default: false)
         """
-        __path = "/_license"
-        __query: t.Dict[str, t.Any] = {}
-        if accept_enterprise is not None:
-            __query["accept_enterprise"] = accept_enterprise
-        if error_trace is not None:
-            __query["error_trace"] = error_trace
-        if filter_path is not None:
-            __query["filter_path"] = filter_path
-        if human is not None:
-            __query["human"] = human
-        if local is not None:
-            __query["local"] = local
-        if pretty is not None:
-            __query["pretty"] = pretty
-        __headers = {"accept": "application/json"}
-        return await self.perform_request(  # type: ignore[return-value]
-            "GET", __path, params=__query, headers=__headers
+        return await self.transport.perform_request(
+            "GET", "/_license", params=params, headers=headers
         )
 
-    @_rewrite_parameters()
-    async def get_basic_status(
-        self,
-        *,
-        error_trace: t.Optional[bool] = None,
-        filter_path: t.Optional[
-            t.Union[str, t.Union[t.List[str], t.Tuple[str, ...]]]
-        ] = None,
-        human: t.Optional[bool] = None,
-        pretty: t.Optional[bool] = None,
-    ) -> ObjectApiResponse[t.Any]:
+    @query_params()
+    async def get_basic_status(self, params=None, headers=None):
         """
         Retrieves information about the status of the basic license.
 
-        `<https://www.elastic.co/guide/en/elasticsearch/reference/master/get-basic-status.html>`_
+        `<https://www.elastic.co/guide/en/elasticsearch/reference/7.12/get-basic-status.html>`_
         """
-        __path = "/_license/basic_status"
-        __query: t.Dict[str, t.Any] = {}
-        if error_trace is not None:
-            __query["error_trace"] = error_trace
-        if filter_path is not None:
-            __query["filter_path"] = filter_path
-        if human is not None:
-            __query["human"] = human
-        if pretty is not None:
-            __query["pretty"] = pretty
-        __headers = {"accept": "application/json"}
-        return await self.perform_request(  # type: ignore[return-value]
-            "GET", __path, params=__query, headers=__headers
+        return await self.transport.perform_request(
+            "GET", "/_license/basic_status", params=params, headers=headers
         )
 
-    @_rewrite_parameters()
-    async def get_trial_status(
-        self,
-        *,
-        error_trace: t.Optional[bool] = None,
-        filter_path: t.Optional[
-            t.Union[str, t.Union[t.List[str], t.Tuple[str, ...]]]
-        ] = None,
-        human: t.Optional[bool] = None,
-        pretty: t.Optional[bool] = None,
-    ) -> ObjectApiResponse[t.Any]:
+    @query_params()
+    async def get_trial_status(self, params=None, headers=None):
         """
         Retrieves information about the status of the trial license.
 
-        `<https://www.elastic.co/guide/en/elasticsearch/reference/master/get-trial-status.html>`_
+        `<https://www.elastic.co/guide/en/elasticsearch/reference/7.12/get-trial-status.html>`_
         """
-        __path = "/_license/trial_status"
-        __query: t.Dict[str, t.Any] = {}
-        if error_trace is not None:
-            __query["error_trace"] = error_trace
-        if filter_path is not None:
-            __query["filter_path"] = filter_path
-        if human is not None:
-            __query["human"] = human
-        if pretty is not None:
-            __query["pretty"] = pretty
-        __headers = {"accept": "application/json"}
-        return await self.perform_request(  # type: ignore[return-value]
-            "GET", __path, params=__query, headers=__headers
+        return await self.transport.perform_request(
+            "GET", "/_license/trial_status", params=params, headers=headers
         )
 
-    @_rewrite_parameters(
-        body_fields=True,
-    )
-    async def post(
-        self,
-        *,
-        licenses: t.Union[
-            t.List[t.Mapping[str, t.Any]], t.Tuple[t.Mapping[str, t.Any], ...]
-        ],
-        acknowledge: t.Optional[bool] = None,
-        error_trace: t.Optional[bool] = None,
-        filter_path: t.Optional[
-            t.Union[str, t.Union[t.List[str], t.Tuple[str, ...]]]
-        ] = None,
-        human: t.Optional[bool] = None,
-        license: t.Optional[t.Mapping[str, t.Any]] = None,
-        pretty: t.Optional[bool] = None,
-    ) -> ObjectApiResponse[t.Any]:
+    @query_params("acknowledge")
+    async def post(self, body=None, params=None, headers=None):
         """
         Updates the license for the cluster.
 
-        `<https://www.elastic.co/guide/en/elasticsearch/reference/master/update-license.html>`_
+        `<https://www.elastic.co/guide/en/elasticsearch/reference/7.12/update-license.html>`_
 
-        :param licenses: A sequence of one or more JSON documents containing the license
-            information.
-        :param acknowledge: Specifies whether you acknowledge the license changes.
-        :param license:
+        :arg body: licenses to be installed
+        :arg acknowledge: whether the user has acknowledged acknowledge
+            messages (default: false)
         """
-        if licenses is None:
-            raise ValueError("Empty value passed for parameter 'licenses'")
-        __path = "/_license"
-        __body: t.Dict[str, t.Any] = {}
-        __query: t.Dict[str, t.Any] = {}
-        if licenses is not None:
-            __body["licenses"] = licenses
-        if acknowledge is not None:
-            __query["acknowledge"] = acknowledge
-        if error_trace is not None:
-            __query["error_trace"] = error_trace
-        if filter_path is not None:
-            __query["filter_path"] = filter_path
-        if human is not None:
-            __query["human"] = human
-        if license is not None:
-            __body["license"] = license
-        if pretty is not None:
-            __query["pretty"] = pretty
-        if not __body:
-            __body = None  # type: ignore[assignment]
-        __headers = {"accept": "application/json"}
-        if __body is not None:
-            __headers["content-type"] = "application/json"
-        return await self.perform_request(  # type: ignore[return-value]
-            "PUT", __path, params=__query, headers=__headers, body=__body
+        return await self.transport.perform_request(
+            "PUT", "/_license", params=params, headers=headers, body=body
         )
 
-    @_rewrite_parameters()
-    async def post_start_basic(
-        self,
-        *,
-        acknowledge: t.Optional[bool] = None,
-        error_trace: t.Optional[bool] = None,
-        filter_path: t.Optional[
-            t.Union[str, t.Union[t.List[str], t.Tuple[str, ...]]]
-        ] = None,
-        human: t.Optional[bool] = None,
-        pretty: t.Optional[bool] = None,
-    ) -> ObjectApiResponse[t.Any]:
+    @query_params("acknowledge")
+    async def post_start_basic(self, params=None, headers=None):
         """
         Starts an indefinite basic license.
 
-        `<https://www.elastic.co/guide/en/elasticsearch/reference/master/start-basic.html>`_
+        `<https://www.elastic.co/guide/en/elasticsearch/reference/7.12/start-basic.html>`_
 
-        :param acknowledge: whether the user has acknowledged acknowledge messages (default:
-            false)
+        :arg acknowledge: whether the user has acknowledged acknowledge
+            messages (default: false)
         """
-        __path = "/_license/start_basic"
-        __query: t.Dict[str, t.Any] = {}
-        if acknowledge is not None:
-            __query["acknowledge"] = acknowledge
-        if error_trace is not None:
-            __query["error_trace"] = error_trace
-        if filter_path is not None:
-            __query["filter_path"] = filter_path
-        if human is not None:
-            __query["human"] = human
-        if pretty is not None:
-            __query["pretty"] = pretty
-        __headers = {"accept": "application/json"}
-        return await self.perform_request(  # type: ignore[return-value]
-            "POST", __path, params=__query, headers=__headers
+        return await self.transport.perform_request(
+            "POST", "/_license/start_basic", params=params, headers=headers
         )
 
-    @_rewrite_parameters()
-    async def post_start_trial(
-        self,
-        *,
-        acknowledge: t.Optional[bool] = None,
-        error_trace: t.Optional[bool] = None,
-        filter_path: t.Optional[
-            t.Union[str, t.Union[t.List[str], t.Tuple[str, ...]]]
-        ] = None,
-        human: t.Optional[bool] = None,
-        pretty: t.Optional[bool] = None,
-        type_query_string: t.Optional[str] = None,
-    ) -> ObjectApiResponse[t.Any]:
+    @query_params("acknowledge", "doc_type")
+    async def post_start_trial(self, params=None, headers=None):
         """
         starts a limited time trial license.
 
-        `<https://www.elastic.co/guide/en/elasticsearch/reference/master/start-trial.html>`_
+        `<https://www.elastic.co/guide/en/elasticsearch/reference/7.12/start-trial.html>`_
 
-        :param acknowledge: whether the user has acknowledged acknowledge messages (default:
-            false)
-        :param type_query_string:
+        :arg acknowledge: whether the user has acknowledged acknowledge
+            messages (default: false)
+        :arg doc_type: The type of trial license to generate (default:
+            "trial")
         """
-        __path = "/_license/start_trial"
-        __query: t.Dict[str, t.Any] = {}
-        if acknowledge is not None:
-            __query["acknowledge"] = acknowledge
-        if error_trace is not None:
-            __query["error_trace"] = error_trace
-        if filter_path is not None:
-            __query["filter_path"] = filter_path
-        if human is not None:
-            __query["human"] = human
-        if pretty is not None:
-            __query["pretty"] = pretty
-        if type_query_string is not None:
-            __query["type_query_string"] = type_query_string
-        __headers = {"accept": "application/json"}
-        return await self.perform_request(  # type: ignore[return-value]
-            "POST", __path, params=__query, headers=__headers
+        # type is a reserved word so it cannot be used, use doc_type instead
+        if "doc_type" in params:
+            params["type"] = params.pop("doc_type")
+
+        return await self.transport.perform_request(
+            "POST", "/_license/start_trial", params=params, headers=headers
         )
