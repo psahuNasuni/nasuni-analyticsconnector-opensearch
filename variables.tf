@@ -3,6 +3,13 @@
 ##  Project       :   Nasuni ElasticSearch Integration
 ##  Organization  :   Nasuni Labs   
 #########################################################
+
+#SSA
+variable "layer_name" {
+  type = string
+  default = "nasuni-labs-os-lambda-layer"
+}
+
 variable "template_url" {
   type        = string
   description = "Amazon S3 bucket URL location of a file containing the CloudFormation template body. Maximum file size: 460,800 bytes"
