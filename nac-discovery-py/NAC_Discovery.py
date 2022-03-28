@@ -19,7 +19,6 @@ import io
 from pptx import Presentation
 import fitz
 from requests.auth import HTTPBasicAuth
-import docx2txt
 from docx import Document
 import pandas as pd
 
