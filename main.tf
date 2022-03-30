@@ -30,10 +30,10 @@ locals {
     var.user_parameters,
     {
       ###################### Read input Parameters from TFVARS file #####################
-      SourceBucketAccessKeyID          = data.local_file.accZes.content
-      SourceBucketSecretAccessKey      = data.local_file.secRet.content
-      DestinationBucketAccessKeyID     = data.local_file.accZes.content
-      DestinationBucketSecretAccessKey = data.local_file.secRet.content
+      SourceBucketAccessKey = var.SourceBucketAccessKeyID != "" ? var.SourceBucketAccessKeyID : data.local_file.accZes.content
+      SourceBucketSecretAccessKey = var.SourceBucketSecretAccessKey != "" ? var.SourceBucketSecretAccessKey : data.local_file.secRet.content
+      DestinationBucketAccessKeyID = var.DestinationBucketAccessKeyID != "" ? var.DestinationBucketAccessKeyID : data.local_file.accZes.content
+      DestinationBucketSecretAccessKey = var.DestinationBucketSecretAccessKey != "" ? var.DestinationBucketSecretAccessKey : data.local_file.secRet.content
 
       ###################### Read input Parameters from Secret Manager #####################
       ProductKey          = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["nac_product_key"]

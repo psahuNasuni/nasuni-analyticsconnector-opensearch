@@ -10,4 +10,4 @@ cmd
 *.tfvars
 *.pem
 *.zip
-
+*copy*

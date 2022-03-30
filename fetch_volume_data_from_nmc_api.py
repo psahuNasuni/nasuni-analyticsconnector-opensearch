@@ -28,11 +28,9 @@ try:
     secret_key = credentials.secret_key
     access_key_file = open('Zaccess_' + rid + '.txt', 'w')
     access_key_file.write(access_key)
-    print(access_key)
 
     secret_key_file = open('Zsecret_' + rid + '.txt', 'w')
     secret_key_file.write(secret_key)
-    print(access_key)
     access_key_file.close()
     secret_key_file.close()
 
