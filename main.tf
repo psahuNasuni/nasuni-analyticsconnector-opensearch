@@ -30,7 +30,7 @@ locals {
     var.user_parameters,
     {
       ###################### Read input Parameters from TFVARS file #####################
-      SourceBucketAccessKey = var.SourceBucketAccessKeyID != "" ? var.SourceBucketAccessKeyID : data.local_file.accZes.content
+      SourceBucketAccessKeyID = var.SourceBucketAccessKeyID != "" ? var.SourceBucketAccessKeyID : data.local_file.accZes.content
       SourceBucketSecretAccessKey = var.SourceBucketSecretAccessKey != "" ? var.SourceBucketSecretAccessKey : data.local_file.secRet.content
       DestinationBucketAccessKeyID = var.DestinationBucketAccessKeyID != "" ? var.DestinationBucketAccessKeyID : data.local_file.accZes.content
       DestinationBucketSecretAccessKey = var.DestinationBucketSecretAccessKey != "" ? var.DestinationBucketSecretAccessKey : data.local_file.secRet.content
