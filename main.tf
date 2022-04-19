@@ -99,7 +99,7 @@ resource "aws_lambda_function" "lambda_function" {
   filename         = "${local.lambda_code_file_name_without_extension}.zip"
   function_name    = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-Lambda-${random_id.nac_unique_stack_id.hex}"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  timeout          = 180 #SSA
+  timeout          = 600 #SSA
   layers           = [data.aws_lambda_layer_version.existing.arn] #SSA
   tags = {
     Name            = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-Lambda-${random_id.nac_unique_stack_id.hex}"
