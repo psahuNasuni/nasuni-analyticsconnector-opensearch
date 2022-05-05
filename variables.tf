@@ -14,7 +14,7 @@ variable "layer_name" {
 variable "nac_scheduler_ip_addr" {
   default = ""
 }
-variable "current_aws_user" {
+variable "aws_current_user" {
   default = ""
 }
 
