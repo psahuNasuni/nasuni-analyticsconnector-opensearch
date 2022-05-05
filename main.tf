@@ -7,7 +7,7 @@
 #SSA
 data "aws_lambda_layer_version" "existing" {
   #layer_name = var.layer_name
-   layer_name = "${var.layer_name}-${var.nac_scheduler_ip_addr}-${var.current_aws_user}"
+   layer_name = "${var.layer_name}-${var.nac_scheduler_ip_addr}-${var.aws_current_user}"
 }
 
 data "aws_s3_bucket" "discovery_source_bucket" {
