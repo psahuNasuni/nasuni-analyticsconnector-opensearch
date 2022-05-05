@@ -10,6 +10,14 @@ variable "layer_name" {
   default = "nasuni-labs-os-lambda-layer"
 }
 
+
+variable "nac_scheduler_ip_addr" {
+  default = ""
+}
+variable "current_aws_user" {
+  default = ""
+}
+
 variable "template_url" {
   type        = string
   description = "Amazon S3 bucket URL location of a file containing the CloudFormation template body. Maximum file size: 460,800 bytes"
