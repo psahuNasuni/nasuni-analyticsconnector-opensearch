@@ -102,6 +102,12 @@ resource "aws_lambda_function" "lambda_function" {
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 600 #SSA
   layers           = [data.aws_lambda_layer_version.existing.arn] #SSA
+  vpc_config {
+    
+      security_group_ids = [data.aws_security_groups.es.ids[0]]
+      subnet_ids         = [var.user_subnet_id]
+    
+  }
   tags = {
     Name            = "${local.resource_name_prefix}-${local.lambda_code_file_name_without_extension}-Lambda-${random_id.nac_unique_stack_id.hex}"
     Application     = "Nasuni Analytics Connector with Elasticsearch"
