@@ -40,7 +40,7 @@ def lambda_handler(event, context):
     check=0
     secret_data_internal = get_secret(
         'nasuni-labs-internal-'+u_id, runtime_region)
-    secret_nct_nce_admin = get_secret('nasuni-labs-os-admin',runtime_region) 
+    secret_nct_nce_admin = get_secret('nasuni-labs-os-admin-2',runtime_region) 
     
     role = secret_data_internal['discovery_lambda_role_arn']
     username=secret_nct_nce_admin['nac_es_admin_user']
