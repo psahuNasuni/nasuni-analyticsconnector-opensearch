@@ -9,6 +9,13 @@ variable "layer_name" {
   type = string
   default = "nasuni-labs-os-lambda-layer"
 }
+variable "user_vpc_id" {
+  default = ""
+}
+
+variable "user_subnet_id" {
+  default = ""
+}
 
 
 variable "nac_scheduler_ip_addr" {
