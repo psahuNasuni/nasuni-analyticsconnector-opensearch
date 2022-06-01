@@ -185,7 +185,8 @@ def connect_es(es,index, data):
                 if idx_content == data['content'] and idx_object_key == data['object_key']:
                     flag = 1
                     print("Indexing is doing when the idx_content and idx_object_key has matched", resp)
-                    es.index(index=i['_index'], doc_type="_doc", id=i['_id'], body=data)
+                    # es.index(index=i['_index'], doc_type="_doc", id=i['_id'], body=data)
+                    es.index(index=i['_index'], id=i['_id'], body=data)
                     break
 
         if flag == 0:
@@ -193,7 +194,8 @@ def connect_es(es,index, data):
             doc_list += [data]
             logging.info("\nAttempting to index the list of docs using helpers.bulk()")
             # use the helpers library's Bulk API to index list of Elasticsearch docs
-            resp = helpers.bulk(es, doc_list, index=data['root_handle'], doc_type="_doc")
+            # resp = helpers.bulk(es, doc_list, index=data['root_handle'], doc_type="_doc")
+            resp = helpers.bulk(es, doc_list, index=data['root_handle'])
             # print the response returned by Elasticsearch
             print("helpers.bulk() RESPONSE:", resp)
             print("helpers.bulk() RESPONSE:", json.dumps(resp, indent=4))
