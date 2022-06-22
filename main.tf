@@ -492,7 +492,7 @@ data "local_file" "toc" {
 }
 
 
-output "root_handle" {
+output "latest_toc_handle_processed" {
   value      = data.local_file.toc.content
   depends_on = [data.local_file.toc]
 }
