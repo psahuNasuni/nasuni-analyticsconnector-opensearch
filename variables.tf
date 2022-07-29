@@ -196,7 +196,9 @@ variable "DestinationBucket" {
 variable "UniFSTOCHandle" {
   default = ""
 }
-
+variable "security_group_id" {
+  default = ""
+}
 variable "SourceBucket" {
   default = ""
 }
