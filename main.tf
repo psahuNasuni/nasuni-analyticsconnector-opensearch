@@ -105,7 +105,7 @@ resource "aws_lambda_function" "lambda_function" {
   
   vpc_config {
     
-      security_group_ids = [var.security_group_id]
+      security_group_ids = [var.nac_es_securitygroup_id]
       subnet_ids         = [var.user_subnet_id]
     
   }
