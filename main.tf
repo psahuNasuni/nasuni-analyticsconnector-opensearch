@@ -7,7 +7,7 @@
 #SSA
 data "aws_lambda_layer_version" "existing" {
   #layer_name = var.layer_name
-   layer_name = "${var.layer_name}-${var.lambda_layer_suffix}"
+   layer_name = "${var.layer_name}-${var.nacscheduler_uid}"
 }
 
 data "aws_s3_bucket" "discovery_source_bucket" {
@@ -92,12 +92,7 @@ data "archive_file" "lambda_zip" {
   source_dir  = "nac-discovery-py/"
   output_path = "${local.lambda_code_file_name_without_extension}.zip"
 }
-data "aws_security_groups" "es" {
-  filter {
-    name   = "vpc-id"
-    values = [var.user_vpc_id]
-  }
-}
+
 resource "aws_lambda_function" "lambda_function" {
   role             = aws_iam_role.lambda_exec_role.arn
   handler          = "${local.lambda_code_file_name_without_extension}.${local.handler}"
@@ -110,7 +105,7 @@ resource "aws_lambda_function" "lambda_function" {
   
   vpc_config {
     
-      security_group_ids = [data.aws_security_groups.es.ids[0]]
+      security_group_ids = [var.nac_es_securitygroup_id]
       subnet_ids         = [var.user_subnet_id]
     
   }

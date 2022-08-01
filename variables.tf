@@ -9,7 +9,7 @@ variable "layer_name" {
   type = string
   default = "nasuni-labs-os-lambda-layer"
 }
-variable "lambda_layer_suffix" {
+variable "nacscheduler_uid" {
   type = string
   default = ""
 }
@@ -196,7 +196,9 @@ variable "DestinationBucket" {
 variable "UniFSTOCHandle" {
   default = ""
 }
-
+variable "nac_es_securitygroup_id" {
+  default = ""
+}
 variable "SourceBucket" {
   default = ""
 }
