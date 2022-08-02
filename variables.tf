@@ -9,6 +9,10 @@ variable "layer_name" {
   type = string
   default = "nasuni-labs-os-lambda-layer"
 }
+variable "lambda_layer_suffix" {
+  type = string
+  default = ""
+}
 variable "nacscheduler_uid" {
   type = string
   default = ""
