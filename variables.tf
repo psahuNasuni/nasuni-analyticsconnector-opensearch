@@ -115,7 +115,7 @@ variable "nac_destination_bucket" {
   description = "S3 bucket where NAC will be updating the files/data"
 }
 variable "runtime" {
-  default = "python3.9"
+  default = "python3.8"
 }
 
 variable "aws_profile" {
