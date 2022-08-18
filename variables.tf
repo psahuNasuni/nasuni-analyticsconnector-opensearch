@@ -138,6 +138,10 @@ variable "SourceBucketAccessKeyID" {
   default = ""
 }
 
+variable "git_branch" {
+  default=""
+}
+
 variable "SourceBucketSecretAccessKey" {
   default = ""
 }
