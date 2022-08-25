@@ -91,9 +91,11 @@ def lambda_handler(event, context):
             with fitz.open(stream=file_content, filetype="pdf") as doc:
                 
                 # iterating through pdf file pages
-                for page in doc:
+                for page in range(doc.page_count):
                     # fetching & appending text to text variable of each page
-                    text += page.getText()
+                    # text += page.getText()
+                    text += doc.get_page_text(page) 
+                
 
             print('pdf data priting',text)
             data['content'] = text
