@@ -529,7 +529,7 @@ output "appliance_address" {
 }
 
 data "local_file" "share_name" {
-  filename   = "${path.cwd}/share_name_${random_id.r_id.dec}.txt"
+  filename   = "${path.cwd}/nmc_api_data_v_share_name_${random_id.r_id.dec}.txt"
   depends_on = [null_resource.nmc_api_data]
 }
 
@@ -540,7 +540,7 @@ output "share_name" {
 }
 
 data "local_file" "share_path" {
-  filename   = "${path.cwd}/share_path_${random_id.r_id.dec}.txt"
+  filename   = "${path.cwd}/nmc_api_data_v_share_path_${random_id.r_id.dec}.txt"
   depends_on = [null_resource.nmc_api_data]
 }
 
