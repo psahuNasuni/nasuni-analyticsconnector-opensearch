@@ -138,19 +138,18 @@ def lambda_handler(event, context):
             # share_name=secret_data_internal['share_name']
         
             print(share_path_last_element)
-        
-        
-            full_path=data['object_key']
-        
-            full_path_list=full_path.split('/')
-            print('full_path',full_path)
-            index_of_last_element=full_path_list.index(share_path_last_element)
-        
-            list_after_index=full_path_list[index_of_last_element+1:]
-        
-            print('/'.join(list_after_index))
+            if share_path_last_element in data['object_key']:
+                full_path=data['object_key']
+
+                full_path_list=full_path.split('/')
+                print('full_path',full_path)
+                index_of_last_element=full_path_list.index(share_path_last_element)
+
+                list_after_index=full_path_list[index_of_last_element+1:]
+
+                print('/'.join(list_after_index))
             if secret_data_internal['web_access_appliance_address']!='not_found':
-                if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-':
+                if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-' and share_path_last_element in data['object_key']:
                     data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+secret_data_internal['share_name']+'/'+'/'.join(list_after_index)
                 else:
                     data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+'/'.join(data['object_key'].split('/')[3:])
