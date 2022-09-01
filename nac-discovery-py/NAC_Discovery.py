@@ -111,7 +111,7 @@ def lambda_handler(event, context):
             df = df.to_string() 
             print('xlsx data priting',df)
             data['content'] = df 
-        elif data['extension'] == 'pptx':
+        elif data['extension'] in ['pptx','ppt']:
             print('data[extension] elif',data['extension'])
             pptx_content = obj1['Body'].read()
             ppt = Presentation(io.BytesIO(pptx_content))
