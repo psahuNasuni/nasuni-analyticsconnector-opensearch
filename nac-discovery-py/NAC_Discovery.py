@@ -129,7 +129,8 @@ def lambda_handler(event, context):
             
 
         if secret_data_internal['web_access_appliance_address']!='not_found':
-            data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+file_name
+            #data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+file_name
+            data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+'/'.join(data['object_key'].split('/')[3:])
         else:
             data['access_url']=secret_data_internal['web_access_appliance_address']
         print('data',data)
