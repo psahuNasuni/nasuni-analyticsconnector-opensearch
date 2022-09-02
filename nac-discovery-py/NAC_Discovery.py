@@ -125,7 +125,7 @@ def lambda_handler(event, context):
                             pptx_data+=run.text
             print(pptx_data)
             data['content'] = pptx_data
-        
+        share_path_last_element=''
         if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-':
             share_path=secret_data_internal['share_path'][1:]
         
@@ -148,13 +148,13 @@ def lambda_handler(event, context):
                 list_after_index=full_path_list[index_of_last_element+1:]
 
                 print('/'.join(list_after_index))
-            if secret_data_internal['web_access_appliance_address']!='not_found':
-                if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-' and share_path_last_element in data['object_key']:
-                    data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+secret_data_internal['share_name']+'/'+'/'.join(list_after_index)
-                else:
-                    data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+'/'.join(data['object_key'].split('/')[3:])
+        if secret_data_internal['web_access_appliance_address']!='not_found':
+            if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-' and share_path_last_element in data['object_key']:
+                data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+secret_data_internal['share_name']+'/'+'/'.join(list_after_index)
             else:
-                data['access_url']=secret_data_internal['web_access_appliance_address']
+                data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+'/'.join(data['object_key'].split('/')[3:])
+        else:
+            data['access_url']=secret_data_internal['web_access_appliance_address']
 
         # if secret_data_internal['web_access_appliance_address']!='not_found':
         #     #data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+file_name
