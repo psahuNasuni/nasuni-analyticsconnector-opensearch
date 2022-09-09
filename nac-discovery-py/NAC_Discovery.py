@@ -91,9 +91,11 @@ def lambda_handler(event, context):
             with fitz.open(stream=file_content, filetype="pdf") as doc:
                 
                 # iterating through pdf file pages
-                for page in doc:
+                for page in range(doc.page_count):
                     # fetching & appending text to text variable of each page
-                    text += page.getText()
+                    # text += page.getText()
+                    text += doc.get_page_text(page) 
+                
 
             print('pdf data priting',text)
             data['content'] = text
@@ -109,7 +111,7 @@ def lambda_handler(event, context):
             df = df.to_string() 
             print('xlsx data priting',df)
             data['content'] = df 
-        elif data['extension'] == 'pptx':
+        elif data['extension'] in ['pptx','ppt']:
             print('data[extension] elif',data['extension'])
             pptx_content = obj1['Body'].read()
             ppt = Presentation(io.BytesIO(pptx_content))
@@ -123,15 +125,46 @@ def lambda_handler(event, context):
                             pptx_data+=run.text
             print(pptx_data)
             data['content'] = pptx_data
-            
-            
+        share_path_last_element=''
+        if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-':
+            share_path=secret_data_internal['share_path'][1:]
+        
+            if '\\' in share_path:
+                share_path_last_element=share_path.split('\\')[-1]
+            else:
+                share_path_last_element=share_path
+            print(share_path_last_element)
+        
+            # share_name=secret_data_internal['share_name']
+        
+            print(share_path_last_element)
+            if share_path_last_element in data['object_key']:
+                full_path=data['object_key']
 
+                full_path_list=full_path.split('/')
+                print('full_path',full_path)
+                index_of_last_element=full_path_list.index(share_path_last_element)
+
+                list_after_index=full_path_list[index_of_last_element+1:]
+
+                print('/'.join(list_after_index))
         if secret_data_internal['web_access_appliance_address']!='not_found':
-            data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+file_name
+            if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-' and share_path_last_element in data['object_key']:
+                data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+secret_data_internal['share_name']+'/'+'/'.join(list_after_index)
+            else:
+                data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+'/'.join(data['object_key'].split('/')[3:])
         else:
             data['access_url']=secret_data_internal['web_access_appliance_address']
-        print('data',data)
+
+        # if secret_data_internal['web_access_appliance_address']!='not_found':
+        #     #data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+file_name
+        #     data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+'/'.join(data['object_key'].split('/')[3:])
+        # else:
+        #     data['access_url']=secret_data_internal['web_access_appliance_address']
+        
+        print('data',data['access_url'])
         print('secret_data_internal',secret_data_internal)
+        # exit()
         es_obj = launch_es(secret_nct_nce_admin['nac_es_url'],data['awsRegion'])
         
         check=connect_es(es_obj,data['root_handle'], data) 

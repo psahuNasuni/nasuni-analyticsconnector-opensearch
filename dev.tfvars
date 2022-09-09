@@ -17,5 +17,9 @@ aws_profile = "<<AWS Profile>>"
 ##  Provide the NMC Volume Name
 volume_name = "<<NMC Volume Name>>"
 
+<<<<<<< HEAD
 
 TEST="HHH"
+=======
+test="HHH"
+>>>>>>> 68deac873ddbbedf30475fa466464970edc230ee

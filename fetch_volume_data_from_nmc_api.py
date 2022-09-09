@@ -58,6 +58,7 @@ try:
     stdout, stderr = process.communicate()
     json_data = json.loads(stdout.decode('utf-8'))
     vv_guid = ''
+    print(json_data)
     for i in json_data['items']:
         if i['name'] == volume_name:
             print(i)
@@ -80,6 +81,24 @@ try:
     # My Accelerate Test
     share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
     share_url.write(web_access_appliance_address)
+    flag=0
+    for i in json_data['items']:
+        if i['volume_guid'] == vv_guid and i['path']!='\\':
+            print(i)
+            print('inside if')
+            share_name = open('nmc_api_data_v_share_name_' + rid + '.txt', 'w')
+            share_name.write(i['name'])
+            share_path = open('nmc_api_data_v_share_path_' + rid + '.txt', 'w')
+            share_path.write(i['path'])
+            flag=1
+            break
+   
+    if flag==0:
+        share_name = open('nmc_api_data_v_share_name_' + rid + '.txt', 'w')
+        share_name.write('-')
+        share_path = open('nmc_api_data_v_share_path_' + rid + '.txt', 'w')
+        share_path.write('-')
+
     # for i in json_data['items']:
     #     if i['volume_guid'] == vv_guid and i['browser_access_settings']['external_share_url'] == web_access_appliance_address:
     #         print(i)
