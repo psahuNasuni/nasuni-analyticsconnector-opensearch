@@ -70,6 +70,7 @@ def lambda_handler(event, context):
         data['object_key'] = unquote_plus(record['s3']['object']['key'])
         data['size'] = str(record['s3']['object'].get('size', -1))
         file_name=os.path.basename(data['object_key'])
+        data['file_name'] = file_name
         data['event_name'] = record['eventName']
         data['event_time'] = record['eventTime']
         data['awsRegion'] = record['awsRegion']
@@ -163,6 +164,9 @@ def lambda_handler(event, context):
         #     data['access_url']=secret_data_internal['web_access_appliance_address']
         
         print('data',data['access_url'])
+        percent_20_url=data['access_url'].replace(' ','%20')
+        print('percent_20_url',percent_20_url)
+        data['access_url']=percent_20_url
         print('secret_data_internal',secret_data_internal)
         # exit()
         es_obj = launch_es(secret_nct_nce_admin['nac_es_url'],data['awsRegion'])
