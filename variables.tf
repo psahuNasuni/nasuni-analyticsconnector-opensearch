@@ -159,7 +159,7 @@ variable "StartingPoint" {
 }
 
 variable "IncludeFilterPattern" {
-  default = ""
+  default = "*"
 }
 
 variable "IncludeFilterType" {
