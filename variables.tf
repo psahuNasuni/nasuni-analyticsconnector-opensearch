@@ -163,7 +163,7 @@ variable "IncludeFilterPattern" {
 }
 
 variable "IncludeFilterType" {
-  default = ""
+  default = "glob"
 }
 
 variable "ExcludeFilterPattern" {
