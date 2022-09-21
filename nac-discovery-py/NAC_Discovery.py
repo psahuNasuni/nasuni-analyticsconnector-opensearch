@@ -84,48 +84,52 @@ def lambda_handler(event, context):
         print("data['object_key']",data['object_key'])  
         print("data['dest_bucket']",data['dest_bucket'])  
         obj1 = s3.get_object(Bucket=data['dest_bucket'], Key=data['object_key'])
-        if data['extension'] in ['csv','txt']:
-            data['content'] = obj1['Body'].read().decode('utf-8')
-        elif data['extension'] == 'pdf':
-            file_content = obj1['Body'].read()
-            text = ""
-            with fitz.open(stream=file_content, filetype="pdf") as doc:
+        if  data['extension'] in ['txt','csv','docx','doc','pdf','xlsx','xls','pptx','ppt']:
                 
-                # iterating through pdf file pages
-                for page in range(doc.page_count):
-                    # fetching & appending text to text variable of each page
-                    # text += page.getText()
-                    text += doc.get_page_text(page) 
-                
-
-            print('pdf data priting',text)
-            data['content'] = text
-        elif data['extension'] in ['docx','doc']:
-           fs = obj1['Body'].read()
-           sentence = str(parseDocx(fs))
-           print('docx data priting',sentence)
-           data['content'] = sentence
-        elif data['extension'] in ['xlsx','xls']:
-            file_content = obj1['Body'].read()
-            read_excel_data = io.BytesIO(file_content)
-            df = pd.read_excel(read_excel_data) 
-            df = df.to_string() 
-            print('xlsx data priting',df)
-            data['content'] = df 
-        elif data['extension'] in ['pptx','ppt']:
-            print('data[extension] elif',data['extension'])
-            pptx_content = obj1['Body'].read()
-            ppt = Presentation(io.BytesIO(pptx_content))
-            pptx_data=''
-            for slide in ppt.slides:
-                for shape in slide.shapes:
-                    if not shape.has_text_frame:
-                        continue
-                    for paragraph in shape.text_frame.paragraphs:
-                        for run in paragraph.runs:
-                            pptx_data+=run.text
-            print(pptx_data)
-            data['content'] = pptx_data
+            if data['extension'] in ['csv','txt']:
+                data['content'] = obj1['Body'].read().decode('utf-8')
+            elif data['extension'] == 'pdf':
+                file_content = obj1['Body'].read()
+                text = ""
+                with fitz.open(stream=file_content, filetype="pdf") as doc:
+                    
+                    # iterating through pdf file pages
+                    for page in range(doc.page_count):
+                        # fetching & appending text to text variable of each page
+                        # text += page.getText()
+                        text += doc.get_page_text(page) 
+                    
+    
+                print('pdf data priting',text)
+                data['content'] = text
+            elif data['extension'] in ['docx','doc']:
+               fs = obj1['Body'].read()
+               sentence = str(parseDocx(fs))
+               print('docx data priting',sentence)
+               data['content'] = sentence
+            elif data['extension'] in ['xlsx','xls']:
+                file_content = obj1['Body'].read()
+                read_excel_data = io.BytesIO(file_content)
+                df = pd.read_excel(read_excel_data) 
+                df = df.to_string() 
+                print('xlsx data priting',df)
+                data['content'] = df 
+            elif data['extension'] in ['pptx','ppt']:
+                print('data[extension] elif',data['extension'])
+                pptx_content = obj1['Body'].read()
+                ppt = Presentation(io.BytesIO(pptx_content))
+                pptx_data=''
+                for slide in ppt.slides:
+                    for shape in slide.shapes:
+                        if not shape.has_text_frame:
+                            continue
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                pptx_data+=run.text
+                print(pptx_data)
+                data['content'] = pptx_data
+        else:
+            data['content'] =''
         share_path_last_element=''
         if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-':
             share_path=secret_data_internal['share_path'][1:]
