@@ -129,7 +129,7 @@ def lambda_handler(event, context):
                 print(pptx_data)
                 data['content'] = pptx_data
         else:
-            data['content'] =''
+            data['content'] =data['file_name']
         share_path_last_element=''
         if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-':
             share_path=secret_data_internal['share_path'][1:]
