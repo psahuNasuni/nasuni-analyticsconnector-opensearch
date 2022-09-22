@@ -159,11 +159,11 @@ variable "StartingPoint" {
 }
 
 variable "IncludeFilterPattern" {
-  default = "*.txt,*.csv,*.doc,*.docx,*.xls,*.xlsx,*.pptx,*.pdf"
+  default = "*"
 }
 
 variable "IncludeFilterType" {
-  default = "glob_list"
+  default = "glob"
 }
 
 variable "ExcludeFilterPattern" {
