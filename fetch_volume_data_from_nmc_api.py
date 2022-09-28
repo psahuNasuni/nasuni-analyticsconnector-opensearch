@@ -2,10 +2,11 @@ import pprint
 import shlex
 import urllib.parse, json, subprocess
 import urllib.request as urlrq
-import ssl, os
+import ssl, os,re
 import sys,logging
 from datetime import *
 import boto3
+from os.path import exists
 
 if len(sys.argv) < 7:
     print(
@@ -58,7 +59,7 @@ try:
     stdout, stderr = process.communicate()
     json_data = json.loads(stdout.decode('utf-8'))
     vv_guid = ''
-    print(json_data)
+    # print(json_data)
     for i in json_data['items']:
         if i['name'] == volume_name:
             print(i)
@@ -78,20 +79,32 @@ try:
     process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     json_data = json.loads(stdout.decode('utf-8'))
-    # My Accelerate Test
+
     share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
     share_url.write(web_access_appliance_address)
     flag=0
     for i in json_data['items']:
         if i['volume_guid'] == vv_guid and i['path']!='\\':
             print(i)
-            print('inside if')
-            share_name = open('nmc_api_data_v_share_name_' + rid + '.txt', 'w')
-            share_name.write(i['name'])
-            share_path = open('nmc_api_data_v_share_path_' + rid + '.txt', 'w')
-            share_path.write(i['path'])
-            flag=1
-            break
+            file_exists = exists('nmc_api_data_v_share_name_' + rid +'.txt')
+
+            s_name=r""+i['name'].replace('\\','/')
+            s_path=r""+i['path'].replace('\\','/')
+
+            print(s_path)
+            if not file_exists :
+                share_name = open('nmc_api_data_v_share_name_' + rid +'.txt', 'w')
+                share_name.write(r""+s_name)
+                share_path = open('nmc_api_data_v_share_path_' + rid + '.txt', 'w')
+                share_path.write(r""+s_path)
+                flag=1
+            else:
+                share_name = open('nmc_api_data_v_share_name_' + rid +'.txt', 'a')
+                share_name.write('|'+r""+s_name)
+                share_path = open('nmc_api_data_v_share_path_' + rid + '.txt', 'a')
+                share_path.write('|'+r""+s_path)
+                flag=1
+
    
     if flag==0:
         share_name = open('nmc_api_data_v_share_name_' + rid + '.txt', 'w')
@@ -109,3 +122,4 @@ try:
     #         share_url.write('not_found')
 except Exception as e:
     print('Runtime Errors', e)
+

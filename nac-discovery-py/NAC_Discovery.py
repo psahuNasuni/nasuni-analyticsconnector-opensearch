@@ -130,49 +130,39 @@ def lambda_handler(event, context):
                 data['content'] = pptx_data
         else:
             data['content'] =data['file_name']
-        share_path_last_element=''
+        share_path_last_element=None
+        list_after_index=None
         if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-':
-            share_path=secret_data_internal['share_path'][1:]
-        
-            if '\\' in share_path:
-                share_path_last_element=share_path.split('\\')[-1]
-            else:
-                share_path_last_element=share_path
-            print(share_path_last_element)
-        
-            # share_name=secret_data_internal['share_name']
-        
-            print(share_path_last_element)
-            if share_path_last_element in data['object_key']:
-                full_path=data['object_key']
+            for name,path in zip(secret_data_internal['share_name'].split('|'),secret_data_internal['share_path'].split('|')):
 
-                full_path_list=full_path.split('/')
-                print('full_path',full_path)
-                index_of_last_element=full_path_list.index(share_path_last_element)
-
-                list_after_index=full_path_list[index_of_last_element+1:]
-
-                print('/'.join(list_after_index))
+                if path in data['object_key']:
+                    share_path_last_element=path.split('/')[-1] 
+                    print('148 share_path_last_element',share_path_last_element)
+                    full_path=data['object_key']
+    
+                    full_path_with_share_name=full_path.replace(path,'/'+name)
+                    print('full_path_with_share_name',full_path_with_share_name)
+                    index_of_last_element=full_path_with_share_name.index(name)
+    
+                    list_after_index=full_path_with_share_name[index_of_last_element:]
+                    
+                    print('159 list_after_index',list_after_index)
+                    
         if secret_data_internal['web_access_appliance_address']!='not_found':
-            if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-' and share_path_last_element in data['object_key']:
-                data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+secret_data_internal['share_name']+'/'+'/'.join(list_after_index)
+            if share_path_last_element != None:
+                if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-' and share_path_last_element in data['object_key']:
+                    # data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+secret_data_internal['share_name']+'/'+list_after_index
+                    data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+list_after_index
             else:
                 data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+'/'.join(data['object_key'].split('/')[3:])
         else:
             data['access_url']=secret_data_internal['web_access_appliance_address']
-
-        # if secret_data_internal['web_access_appliance_address']!='not_found':
-        #     #data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+file_name
-        #     data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+data['volume_name']+'/'+'/'.join(data['object_key'].split('/')[3:])
-        # else:
-        #     data['access_url']=secret_data_internal['web_access_appliance_address']
         
         print('data',data['access_url'])
         percent_20_url=data['access_url'].replace(' ','%20')
         print('percent_20_url',percent_20_url)
         data['access_url']=percent_20_url
         print('secret_data_internal',secret_data_internal)
-        # exit()
         es_obj = launch_es(secret_nct_nce_admin['nac_es_url'],data['awsRegion'])
         
         check=connect_es(es_obj,data['root_handle'], data) 
