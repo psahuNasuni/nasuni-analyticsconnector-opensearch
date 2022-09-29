@@ -15,8 +15,8 @@ fi
 }
 check_if_terraform_exists
 echo "INFO ::: Amazon_NAC_OpenSearch_Service ::: BEGIN ::: Executing ::: Terraform Init ."
-cp ./nac_os.tfvars ../
-cd ..
+cp ./nac_os.tfvars ../../
+cd ../../
 terraform init
 echo "INFO ::: Amazon_NAC_OpenSearch_Service ::: FINISHED ::: Executing ::: Terraform Init  ."
 
