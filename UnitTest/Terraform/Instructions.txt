@@ -1,0 +1,32 @@
+Pre-Requisites: 
+    Terraform 
+    Git
+    For Windows:
+        GitBash
+    For Linux: 
+        Terminal
+Test Case (Happy Path):
+    1- Provision NAC EC2 instance using terraform in a private Subnet
+
+1- Steps to execute Unit Test
+    - Create nac_os.tfvars file (Refer nac_os.tfvars file for sample .tfvars file)
+    - Provide valid values for below Keys
+        region 
+        aws_profile
+        volume_name
+        external_share_url
+    - Execute the Shellscript as below:
+         ./nac_os.sh nac_os.tfvars >> UnitTestOS.log
+2- Observation (Open UnitTestNAC log file for observation): 
+    - Navigate to root folder of the nasuni_analyticsconnector-opensearch
+    - Text file for following details will be generated after the successfull execution
+        external_share_url
+        root_handle
+        source_bucket
+        v_guid
+        share_name
+        share_path
+    - All these files will be having a prefix (nmc_api_data) and a suffix (random id)
+    
+    - Output:
+        Output will be in json format having details of the specified volume.

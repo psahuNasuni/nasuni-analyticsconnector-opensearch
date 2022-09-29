@@ -1,0 +1,35 @@
+Pre-Requisites:
+    Python
+    Terraform 
+    Git
+    For Windows:
+        GitBash
+    For Linux: 
+        Terminal
+Test Case (Happy Path):
+    1- Provision NAC EC2 instance using terraform in a private Subnet
+
+1- Steps to execute Unit Test
+    - Open fetch_volume_data_test.sh file (Refer sampleVats.txt file for sample variable file)
+    - Provide valid values in following format:
+        ip_address (NMC Ip)
+        username   (NMC username)
+        password   (NMC Password)
+        volume_name 
+        rid        (random ID)
+        web_access_appliance_address    (Filer/Web_appliance IP)
+    - Execute the Shellscript as below:
+         ./fetch_volume_data_test.sh >> UnitTestPy.log
+2- Observation (Open UnitTestNAC log file for observation): 
+    - Navigate to root folder of the nasuni_analyticsconnector-opensearch
+    - Text file for following details will be generated after the successfull execution
+        external_share_url
+        root_handle
+        source_bucket
+        v_guid
+        share_name
+        share_path
+    - All these files will be having a prefix (nmc_api_data) and a suffix (random id)
+    
+    - Output:
+        Output will be in json format having details of the specified volume.
