@@ -10,7 +10,7 @@ from requests_aws4auth import AWS4Auth
 import urllib.parse
 from botocore.exceptions import ClientError
 from datetime import *
-import shlex,subprocess
+import shlex,subprocess,json
 from urllib.parse import unquote_plus
 import elasticsearch
 # import PyPDF2
@@ -21,6 +21,9 @@ import fitz
 from requests.auth import HTTPBasicAuth
 from docx import Document
 import pandas as pd
+import logging
+import ssl
+import urllib3
 
 
 logging.getLogger().setLevel(logging.INFO)
@@ -28,6 +31,13 @@ logging.info(f'date={date}')
 cfn = boto3.resource('cloudformation')
 def lambda_handler(event, context):
     logging.info('lambda_handler starts...')
+    # context_arn=context.invoked_function_arn
+    # u_id=context_arn.split('-')[-1]
+    # runtime_region = os.environ['AWS_REGION'] 
+    # secret_data_internal = get_secret(
+    #     'nasuni-labs-internal-'+u_id, runtime_region)
+    
+    # exit()
     print("Lambda function ARN:", context.invoked_function_arn)
     runtime_region = os.environ['AWS_REGION'] 
     context_arn=context.invoked_function_arn
@@ -132,8 +142,9 @@ def lambda_handler(event, context):
             data['content'] =data['file_name']
         share_path_last_element=None
         list_after_index=None
-        if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-':
-            for name,path in zip(secret_data_internal['share_name'].split('|'),secret_data_internal['share_path'].split('|')):
+        share_data=call_nmc_apis(runtime_region,secret_data_internal) 
+        if not share_data['name']  and not share_data['path']:
+            for name,path in zip(share_data['name'],share_data['path']):
 
                 if path in data['object_key']:
                     share_path_last_element=path.split('/')[-1] 
@@ -174,6 +185,62 @@ def lambda_handler(event, context):
         print('Not deleting the s3 bucket folder all data not got loaded into ES.') 
 
     logging.info('lambda_handler ends...')
+    
+def call_nmc_apis(region,internal_secret):
+    user_secret = get_secret(internal_secret['user_secret_name'],region)
+    print('user_secret',user_secret)
+    endpoint=user_secret['nmc_api_endpoint']
+    username=user_secret['nmc_api_username']
+    password=user_secret['nmc_api_password']
+    if not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None):
+        ssl._create_default_https_context = ssl._create_unverified_context
+    url = 'https://' + endpoint + '/api/v1.1/auth/login/'
+    logging.info(url)
+    values = {'username': username, 'password': password}
+    data = urllib.parse.urlencode(values).encode("utf-8")
+    logging.info(data)
+    response = urllib.request.urlopen(url, data, timeout=5)
+    logging.info(response)
+    result = json.loads(response.read().decode('utf-8'))
+    logging.info(result)
+    
+    urllib3.disable_warnings()
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Token {}'.format(result['token'])
+    }
+    print(headers)
+    vv_guid=None
+    r = requests.get('https://' + endpoint + '/api/v1.1/volumes/', headers = headers,verify=False)
+    # print(r.json())
+    for i in r.json()['items']:
+        if i['name'] == internal_secret['volume_name']:
+            # pprint.pprint(i['name'])
+            vv_guid = i['guid']
+            print(vv_guid)
+    
+    r = requests.get('https://' + endpoint + '/api/v1.1/volumes/filers/shares/', headers = headers,verify=False)
+    # print('shares data',r.json())
+    share_data={}
+    name=[]
+    path=[]
+    for i in r.json()['items']:
+        if i['volume_guid'] == vv_guid and i['path']!='\\' and i['browser_access']==True::
+            # pprint.pprint(i['path'])
+            # share_data['name']=i['name']
+            # share_data['path']=i['path']
+            # print(share_data)
+            # name.append(i['name'])
+            # path.append(i['path'])
+            name.append(r""+i['name'].replace('\\','/'))
+            path.append(r""+i['path'].replace('\\','/'))
+            
+
+    share_data['name']=name
+    share_data['path']=path
+    print(share_data) 
+    return share_data
+    
 def parseDocx(data):
     data = io.BytesIO(data)
     document = Document(docx = data)
