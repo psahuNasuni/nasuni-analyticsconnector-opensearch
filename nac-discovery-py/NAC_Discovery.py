@@ -143,7 +143,7 @@ def lambda_handler(event, context):
         share_path_last_element=None
         list_after_index=None
         share_data=call_nmc_apis(runtime_region,secret_data_internal) 
-        if not share_data['name']  and not share_data['path']:
+        if share_data['name']  and share_data['path']:
             for name,path in zip(share_data['name'],share_data['path']):
 
                 if path in data['object_key']:
@@ -161,7 +161,7 @@ def lambda_handler(event, context):
                     
         if secret_data_internal['web_access_appliance_address']!='not_found':
             if share_path_last_element != None:
-                if secret_data_internal['share_name'] !='-' and secret_data_internal['share_path'] !='-' and share_path_last_element in data['object_key']:
+                if share_data['name'] and share_data['path'] and share_path_last_element in data['object_key']:
                     # data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+secret_data_internal['share_name']+'/'+list_after_index
                     data['access_url']='https://'+secret_data_internal['web_access_appliance_address']+'/fs/view/'+list_after_index
             else:
