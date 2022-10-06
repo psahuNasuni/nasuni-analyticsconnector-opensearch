@@ -225,7 +225,7 @@ def call_nmc_apis(region,internal_secret):
     name=[]
     path=[]
     for i in r.json()['items']:
-        if i['volume_guid'] == vv_guid and i['path']!='\\' and i['browser_access']==True::
+        if i['volume_guid'] == vv_guid and i['path']!='\\' and i['browser_access']==True:
             # pprint.pprint(i['path'])
             # share_data['name']=i['name']
             # share_data['path']=i['path']
