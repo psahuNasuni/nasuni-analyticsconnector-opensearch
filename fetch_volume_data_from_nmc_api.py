@@ -80,6 +80,10 @@ try:
     # My Accelerate Test
     share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
     share_url.write(web_access_appliance_address)
+    share_name = open('nmc_api_data_v_share_name_' + rid + '.txt', 'w')
+    share_name.write('-')
+    share_path = open('nmc_api_data_v_share_path_' + rid + '.txt', 'w')
+    share_path.write('-')
     # for i in json_data['items']:
     #     if i['volume_guid'] == vv_guid and i['browser_access_settings']['external_share_url'] == web_access_appliance_address:
     #         print(i)
