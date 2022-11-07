@@ -24,6 +24,9 @@ import pandas as pd
 import logging
 import ssl
 import urllib3
+import xml.etree.ElementTree as ET
+import extract_msg
+import email
 
 
 logging.getLogger().setLevel(logging.INFO)
@@ -86,9 +89,9 @@ def lambda_handler(event, context):
         logging.info("data['object_key'] = {}".format(data['object_key']))  
         logging.info("data['dest_bucket'] = {}".format(data['dest_bucket']))  
         obj1 = s3.get_object(Bucket=data['dest_bucket'], Key=data['object_key'])
-        if  data['extension'] in ['txt','csv','docx','doc','pdf','xlsx','xls','pptx','ppt']:
+        if  data['extension'] in ['txt','csv','docx','doc','pdf','xlsx','xls','pptx','ppt','json','html','xml','rtf','msg']:
                 
-            if data['extension'] in ['csv','txt']:
+            if data['extension'] in ['csv','txt','json','html','rtf']:
                 data['content'] = obj1['Body'].read().decode('utf-8')
             elif data['extension'] == 'pdf':
                 file_content = obj1['Body'].read()
@@ -128,6 +131,47 @@ def lambda_handler(event, context):
                                 pptx_data+=run.text
                 logging.info("pptx data {}".format(pptx_data))
                 data['content'] = pptx_data
+            elif data['extension'] =='xml':
+                # s3.download_file(data['dest_bucket'], data['file_name'], '/tmp/'+data['file_name'])
+                # try:
+                # s3.Bucket(data['dest_bucket']).download_file(data['object_key'], '/tmp/'+data['file_name'])
+                s3.download_file(data['dest_bucket'],data['object_key'], '/tmp/'+data['file_name'])
+                tree = ET.parse( '/tmp/'+data['file_name'])
+                root = tree.getroot()
+                
+                xmlstr = ET.tostring(root, encoding='utf8', method='xml')
+                print(xmlstr)
+                data['content']=str(xmlstr)
+                if os.path.exists('/tmp/'+data['file_name']):
+                    os.remove('/tmp/'+data['file_name'])
+                    print("Removed the file ",'/tmp/'+data['file_name'] ) 
+                # except Exception as e:
+                #     logging.error('ERROR: {0}'.format(str(e)))
+                #     data['content'] =data['file_name']
+            elif data['extension'] =='msg':
+                # f = r'Message.msg'  # Replace with yours
+                
+                # msg = extract_msg.Message(obj1['Body'].read().decode('utf-8'))
+                # msg_message = msg.body
+                # data['content'] = msg_message
+                
+                msg = email.message_from_bytes(obj1['Body'].read())
+                data['content']=str(msg)
+                
+                # s3.download_file(data['dest_bucket'],data['object_key'], '/tmp/'+data['file_name'])
+                # msg = extract_msg.Message('/tmp/'+data['file_name'])
+                # msg_message = msg.body
+                # data['content'] = msg_message
+                
+                # msg = email.message_from_string(obj1['Body'].read(), policy=email.policy.default)
+                # body = msg.get_body(('plain',))
+                # if body:
+                #     body = body.get_content()
+                    
+                # print(body)
+                # data['content']=str(body)
+                
+                
         else:
             data['content'] =data['file_name']
         share_path_last_element=None
