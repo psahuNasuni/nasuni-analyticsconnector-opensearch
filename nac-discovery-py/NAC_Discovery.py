@@ -25,7 +25,7 @@ import logging
 import ssl
 import urllib3
 import xml.etree.ElementTree as ET
-import extract_msg
+#import extract_msg
 import email
 
 
