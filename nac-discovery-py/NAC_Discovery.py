@@ -132,9 +132,7 @@ def lambda_handler(event, context):
                 logging.info("pptx data {}".format(pptx_data))
                 data['content'] = pptx_data
             elif data['extension'] =='xml':
-                # s3.download_file(data['dest_bucket'], data['file_name'], '/tmp/'+data['file_name'])
-                # try:
-                # s3.Bucket(data['dest_bucket']).download_file(data['object_key'], '/tmp/'+data['file_name'])
+
                 s3.download_file(data['dest_bucket'],data['object_key'], '/tmp/'+data['file_name'])
                 tree = ET.parse( '/tmp/'+data['file_name'])
                 root = tree.getroot()
@@ -145,32 +143,9 @@ def lambda_handler(event, context):
                 if os.path.exists('/tmp/'+data['file_name']):
                     os.remove('/tmp/'+data['file_name'])
                     print("Removed the file ",'/tmp/'+data['file_name'] ) 
-                # except Exception as e:
-                #     logging.error('ERROR: {0}'.format(str(e)))
-                #     data['content'] =data['file_name']
             elif data['extension'] =='msg':
-                # f = r'Message.msg'  # Replace with yours
-                
-                # msg = extract_msg.Message(obj1['Body'].read().decode('utf-8'))
-                # msg_message = msg.body
-                # data['content'] = msg_message
-                
                 msg = email.message_from_bytes(obj1['Body'].read())
-                data['content']=str(msg)
-                
-                # s3.download_file(data['dest_bucket'],data['object_key'], '/tmp/'+data['file_name'])
-                # msg = extract_msg.Message('/tmp/'+data['file_name'])
-                # msg_message = msg.body
-                # data['content'] = msg_message
-                
-                # msg = email.message_from_string(obj1['Body'].read(), policy=email.policy.default)
-                # body = msg.get_body(('plain',))
-                # if body:
-                #     body = body.get_content()
-                    
-                # print(body)
-                # data['content']=str(body)
-                
+                data['content']=str(msg)               
                 
         else:
             data['content'] =data['file_name']
