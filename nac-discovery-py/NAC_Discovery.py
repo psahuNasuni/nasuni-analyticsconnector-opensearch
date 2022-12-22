@@ -29,8 +29,9 @@ import urllib3
 logging.getLogger().setLevel(logging.INFO)
 logging.info(f'date={date}')
 cfn = boto3.resource('cloudformation')
-def lambda_handler(event, context):
+def lambda_handler(event, context): 
     logging.info('lambda_handler starts...')
+    print('context.invoked_function_arn',context.invoked_function_arn)
     logging.info("Lambda function ARN:".format(context.invoked_function_arn))
     runtime_region = os.environ['AWS_REGION'] 
     context_arn=context.invoked_function_arn
@@ -63,8 +64,44 @@ def lambda_handler(event, context):
     headers = {'content-type': 'application/json'}
     response = requests.put(url, auth=HTTPBasicAuth(username, password), headers=headers, data=role_data)
     logging.info("response.text {}".format(response.text))
-    share_data=call_nmc_apis(runtime_region,secret_data_internal) 
+    # share_data=call_nmc_apis(runtime_region,secret_data_internal) 
     #traversing thru each file metadata and data and adding those fields into dictionary
+    
+    #traversing thru each file metadata and data and adding those fields into dictionary
+    bucket_name='nasuni-share-data-bucket-storage'    
+    # s3 = boto3.client('s3')
+    print(bucket_name)
+    
+    # List all of the files in the S3 bucket
+    response = s3.list_objects(Bucket=bucket_name)
+    
+    # Read the contents of each file in the S3 bucket
+    print('response',response)
+    bucket_folder_name=None
+    share_data={}
+    for obj in response['Contents']: 
+        # Get the object key (i.e. the file name)
+        key = obj['Key']
+        bucket_folder_name=key
+        # print('bucket_folder_name',bucket_folder_name)
+        print('key',key)  
+        if u_id in key:
+            print('found',key)
+            nmc_api_filename=os.path.basename(key)
+            print('nmc_api_filename',nmc_api_filename)
+            s3.download_file(bucket_name, key, '/tmp/'+nmc_api_filename)
+            
+            with open('/tmp/'+nmc_api_filename, 'r') as f2:
+                if 'nmc_api_data_v_share_name' in '/tmp/'+nmc_api_filename:
+                    share_data['name'] = f2.read().split(',')
+                else:
+                    share_data['path'] = f2.read().split(',')
+            
+                # print(data_file)
+            logging.info('deleting folder from s3 bucket nasuni-share-data-bucket-storage')
+            # s3.delete_object(Bucket=bucket_name, Key=key)
+    print(share_data)
+    logging.info(share_data)
     
     for record in event['Records']:
         logging.info(record)
@@ -132,19 +169,20 @@ def lambda_handler(event, context):
             data['content'] =data['file_name']
         share_path_last_element=None
         list_after_index=None
-        if share_data['name']  and share_data['path']:
-            for name,path in zip(share_data['name'],share_data['path']):
+        if share_data != None:
+            if share_data['name']  and share_data['path']:
+                for name,path in zip(share_data['name'],share_data['path']):
+                    
+                    if path in data['object_key']:
+                        share_path_last_element=path.split('/')[-1] 
+                        logging.info('148 share_path_last_element {}'.format(share_path_last_element))
+                        full_path=data['object_key']
 
-                if path in data['object_key']:
-                    share_path_last_element=path.split('/')[-1] 
-                    logging.info('148 share_path_last_element {}'.format(share_path_last_element))
-                    full_path=data['object_key']
-    
-                    full_path_with_share_name=full_path.replace(path,'/'+name)
-                    logging.info('full_path_with_share_name {}'.format(full_path_with_share_name))
-                    index_of_last_element=full_path_with_share_name.index(name)
-    
-                    list_after_index=full_path_with_share_name[index_of_last_element:]
+                        full_path_with_share_name=full_path.replace(path,'/'+name)
+                        logging.info('full_path_with_share_name {}'.format(full_path_with_share_name))
+                        index_of_last_element=full_path_with_share_name.index(name)
+
+                        list_after_index=full_path_with_share_name[index_of_last_element:]
                     
         if secret_data_internal['web_access_appliance_address']!='not_found':
             if share_path_last_element != None:
@@ -170,7 +208,10 @@ def lambda_handler(event, context):
         del_s3_folder(data['object_key'],data['dest_bucket'])
     else:
         logging.info('Not deleting the s3 bucket folder all data not got loaded into ES.') 
-
+    logging.info('Deleting the files from /tmp/ folder')
+    subprocess.call('rm -rf /tmp/*', shell=True)
+    
+    
     logging.info('lambda_handler ends...')
     
 def call_nmc_apis(region,internal_secret):
@@ -193,7 +234,7 @@ def call_nmc_apis(region,internal_secret):
         logging.info(result)
     except Exception as e:
         logging.error('ERROR: {0}'.format(str(e)))
-        return 0
+        return
         
     urllib3.disable_warnings()
     headers = {
