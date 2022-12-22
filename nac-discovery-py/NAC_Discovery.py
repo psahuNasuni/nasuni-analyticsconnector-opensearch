@@ -170,7 +170,7 @@ def lambda_handler(event, context):
         share_path_last_element=None
         list_after_index=None
         if share_data != None:
-            if share_data['name']  and share_data['path']:
+            if share_data['path'][0]!='-' and share_data['name'][0]!='-':
                 for name,path in zip(share_data['name'],share_data['path']):
                     
                     if path in data['object_key']:
