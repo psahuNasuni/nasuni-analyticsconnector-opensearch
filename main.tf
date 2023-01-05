@@ -166,8 +166,6 @@ locals {
     aws_region                = var.region
     user_secret_name          = var.user_secret
     volume_name               = var.volume_name
-    share_name               = data.local_file.share_name.content
-    share_path               = data.local_file.share_path.content
     # web_access_appliance_address	= jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current_user_secrets.secret_string))["web_access_appliance_address"]
     web_access_appliance_address = data.local_file.appliance_address.content
     destination_prefix           = "/nasuni-labs/${var.volume_name}/${data.local_file.toc.content}"
@@ -453,13 +451,13 @@ resource "random_id" "r_id" {
   byte_length = 1
 }
 data "local_file" "secRet" {
-  filename   = "${path.cwd}/Zsecret_${random_id.r_id.dec}.txt"
+  filename   = "${path.cwd}/Zsecret_${random_id.nac_unique_stack_id.hex}.txt"
   depends_on = [null_resource.nmc_api_data]
 
 }
 
 data "local_file" "accZes" {
-  filename   = "${path.cwd}/Zaccess_${random_id.r_id.dec}.txt"
+  filename   = "${path.cwd}/Zaccess_${random_id.nac_unique_stack_id.hex}.txt"
   depends_on = [null_resource.nmc_api_data]
 }
 
@@ -475,7 +473,7 @@ locals {
 
 resource "null_resource" "nmc_api_data" {
   provisioner "local-exec" {
-    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.r_id.dec} ${local.web_access_appliance_address} && echo 'nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
+    command = "python3 fetch_volume_data_from_nmc_api.py ${local.nmc_api_endpoint} ${local.nmc_api_username} ${local.nmc_api_password} ${var.volume_name} ${random_id.nac_unique_stack_id.hex} ${local.web_access_appliance_address} && echo 'nasuni-labs-internal-${random_id.nac_unique_stack_id.hex}' > nac_uniqui_id.txt"
   }
   provisioner "local-exec" {
     when    = destroy
@@ -484,7 +482,7 @@ resource "null_resource" "nmc_api_data" {
 }
 
 data "local_file" "toc" {
-  filename   = "${path.cwd}/nmc_api_data_root_handle_${random_id.r_id.dec}.txt"
+  filename   = "${path.cwd}/nmc_api_data_root_handle_${random_id.nac_unique_stack_id.hex}.txt"
   depends_on = [null_resource.nmc_api_data]
 }
 
@@ -495,7 +493,7 @@ output "latest_toc_handle_processed" {
 }
 
 data "local_file" "bkt" {
-  filename   = "${path.cwd}/nmc_api_data_source_bucket_${random_id.r_id.dec}.txt"
+  filename   = "${path.cwd}/nmc_api_data_source_bucket_${random_id.nac_unique_stack_id.hex}.txt"
   depends_on = [null_resource.nmc_api_data]
 }
 
@@ -506,7 +504,7 @@ output "source_bucket" {
 }
 
 data "local_file" "v_guid" {
-  filename   = "${path.cwd}/nmc_api_data_v_guid_${random_id.r_id.dec}.txt"
+  filename   = "${path.cwd}/nmc_api_data_v_guid_${random_id.nac_unique_stack_id.hex}.txt"
   depends_on = [null_resource.nmc_api_data]
 }
 
@@ -518,7 +516,7 @@ output "volume_guid" {
 
 
 data "local_file" "appliance_address" {
-  filename   = "${path.cwd}/nmc_api_data_external_share_url_${random_id.r_id.dec}.txt"
+  filename   = "${path.cwd}/nmc_api_data_external_share_url_${random_id.nac_unique_stack_id.hex}.txt"
   depends_on = [null_resource.nmc_api_data]
 }
 
@@ -528,26 +526,7 @@ output "appliance_address" {
   depends_on = [data.local_file.appliance_address]
 }
 
-data "local_file" "share_name" {
-  filename   = "${path.cwd}/nmc_api_data_v_share_name_${random_id.r_id.dec}.txt"
-  depends_on = [null_resource.nmc_api_data]
-}
 
-
-output "share_name" {
-  value      = data.local_file.share_name.content
-  depends_on = [data.local_file.share_name]
-}
-
-data "local_file" "share_path" {
-  filename   = "${path.cwd}/nmc_api_data_v_share_path_${random_id.r_id.dec}.txt"
-  depends_on = [null_resource.nmc_api_data]
-}
-
-output "share_path" {
-  value      = data.local_file.share_path.content
-  depends_on = [data.local_file.share_path]
-}
 
 resource "local_file" "Lambda_Name" {
   content    = aws_lambda_function.lambda_function.function_name
