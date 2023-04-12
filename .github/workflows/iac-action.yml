@@ -1,0 +1,15 @@
+name: Snyk Infrastructure as Code
+on:
+  push:
+    branches:
+      - CTPROJECT-514-Snyk
+jobs:
+  snyk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Snyk to check configuration files for security issues
+        continue-on-error: true
+        uses: snyk/actions/iac@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
